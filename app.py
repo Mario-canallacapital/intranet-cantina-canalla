@@ -1,8 +1,7 @@
-# --- VERSIÓN v34.0 (ROLE MASTER & LOGOUT FIX) ---
+# --- VERSIÓN v35.0 (WELCOME EDITION) ---
 # Actualizado: 12/02/2026 
-# 1. Selector de Roles dinámico en Sidebar
-# 2. Filtro Categorías Docs para Admin
-# 3. Hard Reset en Logout
+# 1. Nueva sección "Guía de Uso" en el menú lateral.
+# 2. Manual redactado para empleados.
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -47,7 +46,7 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v34.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v35.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
 # --- BLOQUE DE SEGURIDAD ---
@@ -209,27 +208,19 @@ try:
     # --- 4. APP PRINCIPAL ---
     elif st.session_state.page == "main":
         u = st.session_state.user
-        
-        # --- SELECTOR DE ROLES DINÁMICO (v34.0) ---
-        # Parseamos los roles del string CSV a una lista limpia
         roles_disponibles = [r.strip() for r in str(u.get('Roles', '')).split(',') if r.strip()]
         
-        # Sidebar con Logo y Selector
         with st.sidebar:
             logo_data = cargar_logo_base64()
             if logo_data: st.markdown(f'<div class="sidebar-logo-container"><img src="data:image/png;base64,{logo_data}" class="circular-logo"></div>', unsafe_allow_html=True)
             st.subheader(f"{u['Nombre_Apellidos']}")
-            
-            # Selector de Rol Activo
             rol_activo = st.selectbox("Rol Activo:", roles_disponibles, index=0)
             st.caption(f"📍 {u['Sede']}")
             st.divider()
 
-            # Definimos los permisos basados en el ROL SELECCIONADO (No el string completo)
             is_admin = rol_activo == "Admin"
             is_encargado = rol_activo == "Encargado"
 
-            # Dot Chat
             df_c_check = load("Chat_Directo", 5)
             dot = ""
             try:
@@ -239,13 +230,12 @@ try:
                     if not ha.empty and pd.to_datetime(ha['Fecha_Hora'], format="%Y-%m-%d %H:%M:%S", errors='coerce').max() > lc: dot = " 🔴"
             except: pass
 
-            menu = st.radio("NAVEGACIÓN", ["📱 Tablón de Novedades", "📄 Mis Documentos", "📚 Manuales", "✅ Tareas", "❓ FAQs", f"💬 Chat{dot}"])
+            menu = st.radio("NAVEGACIÓN", ["📱 Tablón de Novedades", "📄 Mis Documentos", "📚 Manuales", "✅ Tareas", "❓ FAQs", f"💬 Chat{dot}", "ℹ️ Guía de Uso"])
             
             st.write("")
-            # --- LOGOUT FIX (Hard Reset) ---
             if st.button("Salir"):
-                st.session_state.clear() # Borra toda la memoria
-                st.rerun() # Recarga la app desde cero
+                st.session_state.clear()
+                st.rerun()
 
         # --- SECCIONES ---
         if "Tablón" in menu:
@@ -290,6 +280,7 @@ try:
                 with t_tab:
                     f = df_t[df_t['Estado'] == est_v]
                     if not is_admin: f = f[(f['Asignado_A'] == u['Email']) | (f['Creado_Por'] == u['Nombre_Apellidos'])]
+                    
                     for idx, r in f.iterrows():
                         status_icon, limite_str = "🔵", ""
                         if r.get('Fecha_Limite'):
@@ -322,7 +313,6 @@ try:
                                 df_t.at[idx, 'Estado'] = ns; conn.update(worksheet="Tareas", data=df_t); st.rerun()
             draw("Pendiente", tabs_t[0]); draw("En Proceso", tabs_t[1]); draw("Completada", tabs_t[2])
 
-        # --- CHAT ---
         elif "Chat" in menu:
             st.title("💬 Chat Soporte")
             df_chat = load("Chat_Directo", 5)
@@ -340,50 +330,39 @@ try:
                 conn.update(worksheet="Chat_Directo", data=pd.concat([df_chat, nm], ignore_index=True))
                 enviar_aviso_email(tm, "Nuevo Mensaje Chat", f"Respuesta de Admin: {p}"); st.rerun()
 
-        # --- DOCUMENTOS (MEJORA: CATEGORÍAS EN ADMIN Y USUARIO) ---
         elif "Documentos" in menu:
             st.title("📄 Documentos")
             df_d = load("Documentos", 600)
             
-            # --- LÓGICA ADMIN MEJORADA (v34.0) ---
             if is_admin:
                 df_u_docs = load("Usuarios", 600)
-                # Smart Link
                 df_d['NIF_NIE'] = df_d['NIF_NIE'].astype(str).str.strip()
                 df_u_docs['NIF_NIE'] = df_u_docs['NIF_NIE'].astype(str).str.strip()
                 mapa = dict(zip(df_u_docs['NIF_NIE'], df_u_docs['Nombre_Apellidos']))
                 df_d['Nombre_Asignado'] = df_d['NIF_NIE'].map(mapa).fillna("Desconocido")
                 df_d['Busqueda_Comb'] = df_d['Nombre_Asignado'] + " (" + df_d['NIF_NIE'] + ")"
-                
                 lista_opc = sorted(df_d['Busqueda_Comb'].unique().tolist())
-                sel_emp = st.selectbox("🔍 Buscar Empleado:", lista_opc, index=None, placeholder="Escribe para buscar...")
-                
-                dv = df_d[df_d['Busqueda_Comb'] == sel_emp] if sel_emp else df_d
-                
-                # AÑADIDO: FILTRO DE CATEGORÍA PARA ADMIN
+                sel = st.selectbox("🔍 Buscar Empleado:", lista_opc, index=None, placeholder="Escribe para buscar...")
+                dv = df_d[df_d['Busqueda_Comb'] == sel] if sel else df_d
                 if not dv.empty and 'Categoria' in dv.columns:
                     cats_d = dv['Categoria'].unique().tolist()
                     if cats_d:
                         sc = st.selectbox("📂 Filtrar Categoría:", ["Todas"] + cats_d)
                         if sc != "Todas": dv = dv[dv['Categoria'] == sc]
-
-            # --- LÓGICA USUARIO NORMAL ---
             else:
                 dv = df_d[df_d['NIF_NIE'].astype(str).str.strip() == str(u['NIF_NIE']).strip()]
-                # Filtro Categoria
                 if not dv.empty and 'Categoria' in dv.columns:
                     cats_d = dv['Categoria'].unique().tolist()
                     if cats_d:
                         sc = st.selectbox("📂 Tipo:", ["Todos"] + cats_d)
-                        if sc != "Todos": dv = dv[dv['Categoria'] == sc]
+                        if sc != "Todas": dv = dv[dv['Categoria'] == sc]
             
             if not dv.empty:
                 sel_d = st.selectbox("Elegir Documento:", dv['Nombre Documento'])
                 st.components.v1.iframe(f"https://drive.google.com/file/d/{extraer_id_drive(dv[dv['Nombre Documento']==sel_d]['Enlace_Archivo'].values[0])}/preview", height=800)
             else:
-                st.info("No hay documentos para mostrar.")
+                st.info("No hay documentos.")
 
-        # --- MANUALES ---
         elif "Manuales" in menu:
             st.title("📚 Manuales")
             df_m = load("Manuales", 600)
@@ -396,7 +375,6 @@ try:
                         if st.button("Ver", key=f"m_{r['Nombre_Manual']}"):
                             st.components.v1.iframe(f"https://drive.google.com/file/d/{extraer_id_drive(r['Enlace Drive'])}/preview", height=800)
 
-        # --- FAQs ---
         elif "FAQs" in menu:
             st.title("❓ FAQs")
             df_f = load("FAQ", 600)
@@ -406,6 +384,44 @@ try:
                     sub = df_f[df_f['Categoria'] == c]
                     for _, r in sub.iterrows():
                         with st.expander(r['Pregunta']): st.write(r['Respuesta'])
+
+        # --- GUÍA DE USO (v35.0) ---
+        elif "Guía de Uso" in menu:
+            st.title("ℹ️ Guía de Uso de la Intranet")
+            st.write("Bienvenido a la herramienta oficial de Cantina Canalla. Aquí tienes los pasos básicos:")
+            
+            with st.expander("🔐 Primer Acceso y Contraseñas"):
+                st.write("""
+                1. **Primer Acceso:** Al entrar por primera vez, se te pedirá cambiar la contraseña obligatoriamente.
+                2. **Olvidé mi Clave:** En la pantalla de login, pulsa "Olvidé mi contraseña". Recibirás un código de 6 dígitos en tu correo para crear una nueva.
+                """)
+
+            with st.expander("📄 Ver mis Nóminas y Documentos"):
+                st.write("""
+                1. Ve a la sección **"Mis Documentos"** en el menú lateral.
+                2. Si hay categorías (Nóminas, Contratos), elige una.
+                3. Selecciona el documento del desplegable.
+                4. Podrás visualizarlo directamente en la pantalla.
+                """)
+
+            with st.expander("✅ Gestión de Tareas (Semáforo)"):
+                st.write("""
+                Las tareas funcionan con un sistema de semáforo según su fecha límite:
+                * 🟢 **Verde:** Tienes tiempo (indica los días restantes).
+                * 🟠 **Naranja:** ¡La fecha límite es HOY!
+                * 🔴 **Rojo:** Tarea CADUCADA.
+                
+                **Para completar una tarea:**
+                1. Pincha en la tarea para ver los detalles.
+                2. Puedes escribir comentarios o subir fotos del trabajo realizado.
+                3. Cambia el estado a **"Completada"** en el selector inferior.
+                """)
+
+            with st.expander("💬 Chat con Administración"):
+                st.write("""
+                Usa el chat para dudas rápidas o incidencias.
+                * Cuando tengas una respuesta de Administración, verás un **punto rojo 🔴** en el menú lateral.
+                """)
 
 except Exception as e:
     reportar_error_a_mario(e)
