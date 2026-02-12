@@ -1,7 +1,6 @@
-# --- VERSIÓN v35.0 (WELCOME EDITION) ---
+# --- VERSIÓN v35.1 (UNIVERSITY EDITION) ---
 # Actualizado: 12/02/2026 
-# 1. Nueva sección "Guía de Uso" en el menú lateral.
-# 2. Manual redactado para empleados.
+# Guía de Uso ampliada y detallada con todas las secciones (Manuales, FAQs, Tareas...)
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -46,7 +45,7 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v35.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v35.1 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
 # --- BLOQUE DE SEGURIDAD ---
@@ -333,7 +332,6 @@ try:
         elif "Documentos" in menu:
             st.title("📄 Documentos")
             df_d = load("Documentos", 600)
-            
             if is_admin:
                 df_u_docs = load("Usuarios", 600)
                 df_d['NIF_NIE'] = df_d['NIF_NIE'].astype(str).str.strip()
@@ -385,42 +383,67 @@ try:
                     for _, r in sub.iterrows():
                         with st.expander(r['Pregunta']): st.write(r['Respuesta'])
 
-        # --- GUÍA DE USO (v35.0) ---
+        # --- GUÍA DE USO MEJORADA (v35.1) ---
         elif "Guía de Uso" in menu:
-            st.title("ℹ️ Guía de Uso de la Intranet")
-            st.write("Bienvenido a la herramienta oficial de Cantina Canalla. Aquí tienes los pasos básicos:")
-            
-            with st.expander("🔐 Primer Acceso y Contraseñas"):
+            st.title("ℹ️ Manual de Usuario - Intranet Cantina")
+            st.markdown("### ¡Bienvenido/a al equipo! 🍴")
+            st.write("Esta herramienta es tu centro de mando para todo lo relacionado con el trabajo. Aquí tienes una guía rápida de qué puedes hacer en cada sección.")
+            st.divider()
+
+            with st.expander("📱 1. Tablón de Novedades (Inicio)"):
+                st.info("Es lo primero que ves al entrar.")
                 st.write("""
-                1. **Primer Acceso:** Al entrar por primera vez, se te pedirá cambiar la contraseña obligatoriamente.
-                2. **Olvidé mi Clave:** En la pantalla de login, pulsa "Olvidé mi contraseña". Recibirás un código de 6 dígitos en tu correo para crear una nueva.
+                * Aquí publicamos noticias importantes, cambios de turno generales, o eventos.
+                * Funciona como un muro de redes sociales: verás la foto, el título y quién lo ha publicado.
+                * **Consejo:** Échale un ojo cada vez que entres para estar al día.
                 """)
 
-            with st.expander("📄 Ver mis Nóminas y Documentos"):
+            with st.expander("📄 2. Mis Documentos (Nóminas y Contratos)"):
+                st.info("Tu archivo personal digital.")
                 st.write("""
-                1. Ve a la sección **"Mis Documentos"** en el menú lateral.
-                2. Si hay categorías (Nóminas, Contratos), elige una.
-                3. Selecciona el documento del desplegable.
-                4. Podrás visualizarlo directamente en la pantalla.
+                1. Selecciona la **categoría** (ej: Nóminas, Contratos, Bajas...).
+                2. Elige el documento específico en el desplegable.
+                3. Se abrirá una vista previa para que lo leas o lo descargues si lo necesitas.
+                * **Privacidad:** Solo tú puedes ver tus documentos (y la Administración, claro).
                 """)
 
-            with st.expander("✅ Gestión de Tareas (Semáforo)"):
+            with st.expander("📚 3. Manuales y Protocolos"):
+                st.info("La enciclopedia de la Cantina.")
                 st.write("""
-                Las tareas funcionan con un sistema de semáforo según su fecha límite:
-                * 🟢 **Verde:** Tienes tiempo (indica los días restantes).
+                Aquí encontrarás las recetas, fichas técnicas, protocolos de limpieza y normas de la casa.
+                * Están organizados por **carpetas** (Cocina, Sala, Barra...).
+                * Pincha en la carpeta para desplegar los manuales que hay dentro.
+                * Pulsa "Ver" para abrir el PDF.
+                """)
+
+            with st.expander("✅ 4. Gestión de Tareas (¡Importante!)"):
+                st.warning("Tu lista de cosas por hacer.")
+                st.write("""
+                Las tareas tienen un **Semáforo de Prioridad** según la fecha límite:
+                * 🟢 **Verde:** Tienes tiempo de sobra.
                 * 🟠 **Naranja:** ¡La fecha límite es HOY!
-                * 🔴 **Rojo:** Tarea CADUCADA.
+                * 🔴 **Rojo:** Tarea CADUCADA (avisa a tu encargado).
+
+                **Flujo de trabajo:**
+                1. Cuando te asignan una tarea, te llega un **email** y aparece en la pestaña **"🆕 Pendientes"**.
+                2. Si empiezas a trabajar en ella pero no acabas, pásala a **"🚧 En Proceso"**.
+                3. Cuando termines, pásala a **"✅ Completada"**.
                 
-                **Para completar una tarea:**
-                1. Pincha en la tarea para ver los detalles.
-                2. Puedes escribir comentarios o subir fotos del trabajo realizado.
-                3. Cambia el estado a **"Completada"** en el selector inferior.
+                **Comunicación:** Dentro de cada tarea puedes chatear con quien te la mandó y subir fotos para demostrar que el trabajo está hecho.
                 """)
 
-            with st.expander("💬 Chat con Administración"):
+            with st.expander("❓ 5. Preguntas Frecuentes (FAQs)"):
                 st.write("""
-                Usa el chat para dudas rápidas o incidencias.
-                * Cuando tengas una respuesta de Administración, verás un **punto rojo 🔴** en el menú lateral.
+                Respuestas rápidas a las dudas de siempre: "¿Cómo pido vacaciones?", "¿Qué hago si se rompe la cafetera?", etc.
+                Busca aquí antes de preguntar, ¡seguro que la respuesta ya existe!
+                """)
+
+            with st.expander("💬 6. Chat con Administración"):
+                st.success("Línea directa para problemas personales.")
+                st.write("""
+                Usa este chat para temas de nóminas, horarios personales o incidencias privadas.
+                * Es un chat directo con Mario/Admin.
+                * Si ves un **punto rojo 🔴** en el menú lateral, es que te han contestado.
                 """)
 
 except Exception as e:
