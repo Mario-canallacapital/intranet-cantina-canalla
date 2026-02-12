@@ -1,7 +1,6 @@
 streamlit
-streamlit-gsheets
+st-gsheets-connection
 pandas
 Pillow
 requests
 gspread
-st-gsheets-connection
