@@ -1,0 +1,7 @@
+streamlit
+streamlit-gsheets
+pandas
+Pillow
+requests
+gspread
+st-gsheets-connection
