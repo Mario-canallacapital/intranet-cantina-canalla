@@ -1,5 +1,5 @@
-# --- VERSIÓN v31.2 (RESILIENCE FIX) ---
-# Actualizado: 12/02/2026 - Sistema de Reintentos para Error 500 de Google
+# --- VERSIÓN v33.0 (COMPRESSED TASKS) ---
+# Actualizado: 12/02/2026 - Tareas desplegables (Acordeón) para limpieza visual
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -14,7 +14,6 @@ from PIL import Image
 import smtplib
 import random
 import traceback
-import time # Necesario para esperar entre reintentos
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -44,7 +43,7 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v31.2 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v33.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
 # --- BLOQUE DE SEGURIDAD ---
@@ -65,8 +64,6 @@ try:
         .bubble-admin { background-color: #262626 !important; color: white !important; margin-right: auto; border-bottom-left-radius: 4px; }
         h1, h2, h3, p, span, label, .stMarkdown, .stExpander, .stSubheader { color: #ffffff !important; }
         .stExpander { background-color: #121212 !important; border: 1px solid #333 !important; }
-        .status-expired { color: #ff4b4b !important; font-weight: bold; }
-        .status-ok { color: #00ff00 !important; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -107,17 +104,14 @@ try:
 
     # --- CONEXIÓN RESILIENTE ---
     conn = st.connection("gsheets", type=GSheetsConnection)
-    
     def load(p, ttl=5):
-        """Intenta leer Google Sheets hasta 3 veces si falla"""
+        import time
         max_retries = 3
         for i in range(max_retries):
-            try:
-                return conn.read(worksheet=p, ttl=ttl)
+            try: return conn.read(worksheet=p, ttl=ttl)
             except Exception as e:
-                if i == max_retries - 1: # Último intento fallido
-                    raise e
-                time.sleep(2) # Espera 2 seg antes de reintentar
+                if i == max_retries - 1: raise e
+                time.sleep(2)
 
     # --- SESIÓN ---
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -136,7 +130,6 @@ try:
                 with st.form("login_form"):
                     e, n, p = st.text_input("Email"), st.text_input("NIF"), st.text_input("Contraseña", type="password")
                     if st.form_submit_button("Entrar", use_container_width=True):
-                        # Aquí usamos el load() mejorado que reintenta si falla
                         df_u = load("Usuarios", 0)
                         v = df_u[(df_u['Email'].str.strip() == e.strip()) & (df_u['NIF_NIE'].astype(str).str.strip() == n.strip()) & (df_u['Contraseña'].astype(str).str.strip() == p.strip())]
                         if not v.empty:
@@ -195,7 +188,7 @@ try:
         df_av = load("Avisos", 30)
         if not df_av.empty:
             fechas_av = pd.to_datetime(df_av['Fecha_Publicacion'], format="%Y-%m-%d %H:%M:%S", errors='coerce')
-            if fechas_av.max() > last_log: alertas.append("📱 Nuevos avisos en el Tablón de Novedades")
+            if fechas_av.max() > last_log: alertas.append("📱 Nuevos avisos en el Tablón")
         if alertas:
             st.subheader("🔔 Novedades:"); 
             for a in alertas: st.info(a)
@@ -237,8 +230,8 @@ try:
             df = load("Avisos", 300)
             for _, r in df.sort_values(by=df.columns[0], ascending=False).iterrows():
                 img = procesar_img_drive(r.get('Enlace_Imagen'))
-                sede = str(r.get('Sede_Destino')) if r.get('Sede_Destino') and str(r.get('Sede_Destino')) != 'None' else "Todas"
-                autor = str(r.get('Nombre_Apellidos')) if r.get('Nombre_Apellidos') and str(r.get('Nombre_Apellidos')) != 'None' else "Admin"
+                autor = str(r.get('Nombre_Apellidos')) if not pd.isna(r.get('Nombre_Apellidos')) else "Admin"
+                sede = str(r.get('Sede_Destino')) if not pd.isna(r.get('Sede_Destino')) else "Todas"
                 st.markdown(f'<div class="insta-card"><div class="insta-header">📍 {sede} • {autor}</div>', unsafe_allow_html=True)
                 if img: st.image(img, use_container_width=True)
                 st.markdown(f'<div class="insta-footer"><b>{r.get("Titulo")}</b>: {r.get("Contenido")}<div class="insta-date">{r.get("Fecha_Publicacion")}</div></div></div>', unsafe_allow_html=True)
@@ -263,34 +256,55 @@ try:
                         
                         nd = st.selectbox("Asignar:", lp if lp else ["Sin usuarios"])
                         if st.form_submit_button("Crear"):
-                            em_d = df_u[df_u['Nombre_Apellidos']==nd]['Email'].values[0]
-                            n_r = pd.DataFrame([{"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": dsc, "Asignado_A": em_d, "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl)}])
-                            conn.update(worksheet="Tareas", data=pd.concat([df_t, n_r], ignore_index=True))
-                            enviar_aviso_email(em_d, f"Tarea: {tit}", f"De: {u['Nombre_Apellidos']}\n\n{dsc}"); st.rerun()
+                            if not tit.strip() or not dsc.strip() or nd == "Sin usuarios" or not nd:
+                                st.error("⛔ Rellena Título, Descripción y Asignado.")
+                            else:
+                                em_d = df_u[df_u['Nombre_Apellidos']==nd]['Email'].values[0]
+                                n_r = pd.DataFrame([{"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": dsc, "Asignado_A": em_d, "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl)}])
+                                conn.update(worksheet="Tareas", data=pd.concat([df_t, n_r], ignore_index=True))
+                                enviar_aviso_email(em_d, f"Tarea: {tit}", f"De: {u['Nombre_Apellidos']}\n\n{dsc}"); st.rerun()
 
-            def draw_list(est_v, t_tab):
+            def draw(est_v, t_tab):
                 with t_tab:
                     f = df_t[df_t['Estado'] == est_v]
                     if not is_admin: f = f[(f['Asignado_A'] == u['Email']) | (f['Creado_Por'] == u['Nombre_Apellidos'])]
+                    
                     for idx, r in f.iterrows():
-                        with st.container(border=True):
-                            ds = ""
-                            if r.get('Fecha_Limite'):
-                                try:
-                                    diff = (pd.to_datetime(r['Fecha_Limite']).date() - date.today()).days
-                                    if diff < 0: ds = ' <span class="status-expired">(⚠️ CADUCADA)</span>'
-                                    else: ds = f' <span class="status-ok">(⏳ {diff} días)</span>'
-                                except: pass
-                            st.markdown(f"### {r['Titulo_Tarea']} {ds}", unsafe_allow_html=True)
-                            st.write(f"📝 {r.get('Descripción', '')}")
-                            st.caption(f"De: {r['Creado_Por']} | Para: {r['Asignado_A']}")
+                        # --- CÁLCULO DE VISUALIZACIÓN COMPRIMIDA (HEADER) ---
+                        status_icon = "🔵" # Default
+                        limite_str = ""
+                        
+                        if r.get('Fecha_Limite'):
+                            try:
+                                d_lim = pd.to_datetime(r['Fecha_Limite']).date()
+                                dias_rest = (d_lim - date.today()).days
+                                if dias_rest < 0:
+                                    status_icon = "🔴"
+                                    limite_str = f"(⚠️ CADUCADA)"
+                                elif dias_rest == 0:
+                                    status_icon = "🟠"
+                                    limite_str = "(⏳ HOY)"
+                                else:
+                                    status_icon = "🟢"
+                                    limite_str = f"(📅 {dias_rest} días)"
+                            except: pass
+                        
+                        # CREAMOS LA CABECERA DEL ACORDEÓN
+                        header_txt = f"{status_icon} **{r['Titulo_Tarea']}** | De: {r['Creado_Por']} ➔ Para: {r.get('Asignado_A', 'N/A')} {limite_str}"
+                        
+                        # --- ACORDEÓN (EXPANDER) ---
+                        with st.expander(header_txt):
+                            st.write(f"**Descripción:** {r.get('Descripción', 'Sin detalle')}")
+                            st.divider()
                             
+                            # Hilo
                             c_l = df_com[df_com['ID_Tarea'] == r['ID_Tarea']]
                             for _, c in c_l.iterrows():
                                 with st.chat_message("user"):
                                     st.write(f"**{c['Nombre_Apellidos']}**")
                                     if "data:image" in str(c['Texto']): st.image(c['Texto'], width=300)
                                     else: st.write(c['Texto'])
+                            
                             with st.form(key=f"c_{r['ID_Tarea']}", clear_on_submit=True):
                                 mc, fc = st.text_input("Mensaje"), st.file_uploader("📸", type=['jpg','png'], key=f"f_{r['ID_Tarea']}")
                                 if st.form_submit_button("Responder"):
@@ -298,10 +312,12 @@ try:
                                     if fc: val = comprimir_foto(fc)
                                     n_c = pd.DataFrame([{"ID_Tarea": r['ID_Tarea'], "Nombre_Apellidos": u['Nombre_Apellidos'], "Texto": val, "Fecha_Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}])
                                     conn.update(worksheet="Comentarios_Tareas", data=pd.concat([df_com, n_c], ignore_index=True)); st.rerun()
+                            
                             ns = st.selectbox("Estado:", ["Pendiente", "En Proceso", "Completada"], index=["Pendiente", "En Proceso", "Completada"].index(r['Estado']), key=f"s_{r['ID_Tarea']}")
                             if ns != r['Estado']:
                                 df_t.at[idx, 'Estado'] = ns; conn.update(worksheet="Tareas", data=df_t); st.rerun()
-            draw_list("Pendiente", tabs_t[0]); draw_list("En Proceso", tabs_t[1]); draw_list("Completada", tabs_t[2])
+                                
+            draw("Pendiente", tabs_t[0]); draw("En Proceso", tabs_t[1]); draw("Completada", tabs_t[2])
 
         # --- CHAT ---
         elif "Chat" in menu:
@@ -321,11 +337,10 @@ try:
                 conn.update(worksheet="Chat_Directo", data=pd.concat([df_chat, nm], ignore_index=True))
                 enviar_aviso_email(tm, "Nuevo Mensaje Chat", f"Respuesta de Admin: {p}"); st.rerun()
 
-        # --- DOCUMENTOS (Smart Link + Autocompletar) ---
+        # --- DOCUMENTOS ---
         elif "Documentos" in menu:
             st.title("📄 Documentos")
             df_d = load("Documentos", 600)
-            
             if is_admin:
                 df_u_docs = load("Usuarios", 600)
                 df_d['NIF_NIE'] = df_d['NIF_NIE'].astype(str).str.strip()
@@ -333,18 +348,25 @@ try:
                 mapa = dict(zip(df_u_docs['NIF_NIE'], df_u_docs['Nombre_Apellidos']))
                 df_d['Nombre_Asignado'] = df_d['NIF_NIE'].map(mapa).fillna("Desconocido")
                 df_d['Busqueda_Comb'] = df_d['Nombre_Asignado'] + " (" + df_d['NIF_NIE'] + ")"
-                
                 lista_opc = sorted(df_d['Busqueda_Comb'].unique().tolist())
                 sel = st.selectbox("🔍 Buscar Empleado:", lista_opc, index=None, placeholder="Escribe para buscar...")
                 dv = df_d[df_d['Busqueda_Comb'] == sel] if sel else df_d
             else:
                 dv = df_d[df_d['NIF_NIE'].astype(str).str.strip() == str(u['NIF_NIE']).strip()]
+                # Filtro Categoria Empleado
+                if not dv.empty and 'Categoria' in dv.columns:
+                    cats_d = dv['Categoria'].unique().tolist()
+                    if cats_d:
+                        sc = st.selectbox("📂 Tipo:", ["Todos"] + cats_d)
+                        if sc != "Todos": dv = dv[dv['Categoria'] == sc]
             
             if not dv.empty:
                 sel_d = st.selectbox("Elegir Documento:", dv['Nombre Documento'])
                 st.components.v1.iframe(f"https://drive.google.com/file/d/{extraer_id_drive(dv[dv['Nombre Documento']==sel_d]['Enlace_Archivo'].values[0])}/preview", height=800)
+            else:
+                st.info("No hay documentos.")
 
-        # --- MANUALES (Colapsables) ---
+        # --- MANUALES ---
         elif "Manuales" in menu:
             st.title("📚 Manuales")
             df_m = load("Manuales", 600)
@@ -357,7 +379,7 @@ try:
                         if st.button("Ver", key=f"m_{r['Nombre_Manual']}"):
                             st.components.v1.iframe(f"https://drive.google.com/file/d/{extraer_id_drive(r['Enlace Drive'])}/preview", height=800)
 
-        # --- FAQs (Colapsables) ---
+        # --- FAQs ---
         elif "FAQs" in menu:
             st.title("❓ FAQs")
             df_f = load("FAQ", 600)
@@ -370,5 +392,5 @@ try:
 
 except Exception as e:
     reportar_error_a_mario(e)
-    st.error("⚠️ Error técnico reportado al Administrador.")
+    st.error("⚠️ Error técnico reportado a Mario.")
     if st.button("Recargar"): st.rerun()
