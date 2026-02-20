@@ -97,14 +97,12 @@ try:
         match = re.search(r'[-\w]{25,}', url)
         return match.group(0) if match else None
 
-    @st.cache_data(ttl=600)
+    # NUEVA VERSIÓN DE IMÁGENES DRIVE PARA EVITAR "IMAGEN ROTA"
     def procesar_img_drive(url):
         fid = extraer_id_drive(url)
         if not fid: return None
-        try:
-            res = requests.get(f"https://drive.google.com/uc?export=download&id={fid}", timeout=10)
-            return f"data:image/jpeg;base64,{base64.b64encode(res.content).decode()}"
-        except: return None
+        # Usamos el generador de miniaturas oficial de Google Drive
+        return f"https://drive.google.com/thumbnail?id={fid}&sz=w800"
 
     # --- CONEXIÓN ---
     conn = st.connection("gsheets", type=GSheetsConnection)
