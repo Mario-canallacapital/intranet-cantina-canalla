@@ -238,9 +238,15 @@ try:
         # --- SECCIONES ---
         
         if "Tablón" in menu:
-            # CORRECCIÓN TABLÓN APLICADA (Filtros + Tiempo caché a 30 seg + Saltos de línea)
             df = load("Avisos", 30)
-            for _, r in df.sort_values(by=df.columns[0], ascending=False).iterrows():
+            
+            # 1. Creamos una columna temporal de fecha real para ordenarla matemáticamente y no alfabéticamente
+            df['Fecha_Orden'] = pd.to_datetime(df['Fecha_Publicacion'], dayfirst=True, errors='coerce')
+            
+            # 2. Ordenamos por Inicial (SI > NO), Fijado (SI > NO) y Fecha (Más reciente primero)
+            df_ordenado = df.sort_values(by=['Inicial', 'Fijado', 'Fecha_Orden'], ascending=[False, False, False])
+            
+            for _, r in df_ordenado.iterrows():
                 
                 sede_aviso = str(r.get('Sede_Destino', 'Todas'))
                 if sede_aviso.upper() != "TODAS" and not comparten_sede(u['Sede'], sede_aviso):
