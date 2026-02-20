@@ -238,7 +238,7 @@ try:
 
         # --- SECCIONES ---
         if "Tablón" in menu:
-            df = load("Avisos", 300)
+            df = load("Avisos", 5)
             for _, r in df.sort_values(by=df.columns[0], ascending=False).iterrows():
                 img = procesar_img_drive(r.get('Enlace_Imagen'))
                 autor = str(r.get('Nombre_Apellidos')) if not pd.isna(r.get('Nombre_Apellidos')) else "Admin"
@@ -450,3 +450,4 @@ except Exception as e:
     reportar_error_a_mario(e)
     st.error("⚠️ Error técnico reportado a Mario.")
     if st.button("Recargar"): st.rerun()
+
