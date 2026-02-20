@@ -101,7 +101,6 @@ try:
     def procesar_img_drive(url):
         fid = extraer_id_drive(url)
         if not fid: return None
-        # Usamos el generador de miniaturas oficial de Google Drive
         return f"https://drive.google.com/thumbnail?id={fid}&sz=w800"
 
     # --- CONEXIÓN ---
@@ -188,7 +187,6 @@ try:
         alertas = []
         df_av = load("Avisos", 30)
         if not df_av.empty:
-            # CORRECCIÓN DE FECHAS APLICADA (dayfirst=True)
             fechas_av = pd.to_datetime(df_av['Fecha_Publicacion'], dayfirst=True, errors='coerce')
             if fechas_av.max() > last_log: alertas.append("📱 Nuevos avisos en el Tablón")
         if alertas:
@@ -240,11 +238,15 @@ try:
         if "Tablón" in menu:
             df = load("Avisos", 30)
             
-            # 1. Creamos una columna temporal de fecha real para ordenarla matemáticamente y no alfabéticamente
+            # 1. CREAMOS PESOS NUMÉRICOS: Si pone 'SI', 'SÍ' o 'S', le damos un 1. A todo lo demás un 0.
+            # Quitamos los espacios invisibles con .strip() para evitar errores
+            df['peso_inicial'] = df.get('Inicial', '').astype(str).str.strip().str.upper().apply(lambda x: 1 if x in ['SI', 'SÍ', 'S'] else 0)
+            df['peso_fijado'] = df.get('Fijado', '').astype(str).str.strip().str.upper().apply(lambda x: 1 if x in ['SI', 'SÍ', 'S'] else 0)
+            
             df['Fecha_Orden'] = pd.to_datetime(df['Fecha_Publicacion'], dayfirst=True, errors='coerce')
             
-            # 2. Ordenamos por Inicial (SI > NO), Fijado (SI > NO) y Fecha (Más reciente primero)
-            df_ordenado = df.sort_values(by=['Inicial', 'Fijado', 'Fecha_Orden'], ascending=[False, False, False])
+            # 2. ORDENAMOS usando nuestros números (1 va antes que 0)
+            df_ordenado = df.sort_values(by=['peso_inicial', 'peso_fijado', 'Fecha_Orden'], ascending=[False, False, False])
             
             for _, r in df_ordenado.iterrows():
                 
