@@ -190,7 +190,8 @@ try:
         alertas = []
         df_av = load("Avisos", 30)
         if not df_av.empty:
-            fechas_av = pd.to_datetime(df_av['Fecha_Publicacion'], format="%Y-%m-%d %H:%M:%S", errors='coerce')
+        # SUSTITUYE la línea de "fechas_av = ..." por esta:
+            fechas_av = pd.to_datetime(df_av['Fecha_Publicacion'], dayfirst=True, errors='coerce')
             if fechas_av.max() > last_log: alertas.append("📱 Nuevos avisos en el Tablón")
         if alertas:
             st.subheader("🔔 Novedades:"); 
@@ -237,17 +238,26 @@ try:
                 st.rerun()
 
         # --- SECCIONES ---
-        if "Tablón" in menu:
-            df = load("Avisos", 5)
+if "Tablón" in menu:
+            df = load("Avisos", 30) # Caché reducido a 30 segundos
             for _, r in df.sort_values(by=df.columns[0], ascending=False).iterrows():
+                
+                # 1. Filtro real por sede
+                sede_aviso = str(r.get('Sede_Destino', 'Todas'))
+                if sede_aviso.upper() != "TODAS" and not comparten_sede(u['Sede'], sede_aviso):
+                    continue # Si no coincide la sede, se salta este aviso y no lo dibuja
+                
                 img = procesar_img_drive(r.get('Enlace_Imagen'))
                 autor = str(r.get('Nombre_Apellidos')) if not pd.isna(r.get('Nombre_Apellidos')) else "Admin"
-                sede = str(r.get('Sede_Destino')) if not pd.isna(r.get('Sede_Destino')) else "Todas"
-                st.markdown(f'<div class="insta-card"><div class="insta-header">📍 {sede} • {autor}</div>', unsafe_allow_html=True)
+                
+                # 2. Respetar los saltos de línea del texto de Google Sheets
+                contenido = str(r.get("Contenido", "")).replace('\n', '<br>')
+                
+                st.markdown(f'<div class="insta-card"><div class="insta-header">📍 {sede_aviso} • {autor}</div>', unsafe_allow_html=True)
                 if img: st.image(img, use_container_width=True)
-                st.markdown(f'<div class="insta-footer"><b>{r.get("Titulo")}</b>: {r.get("Contenido")}<div class="insta-date">{r.get("Fecha_Publicacion")}</div></div></div>', unsafe_allow_html=True)
-
-        elif "Tareas" in menu:
+                st.markdown(f'<div class="insta-footer"><b>{r.get("Titulo")}</b>: {contenido}<div class="insta-date">{r.get("Fecha_Publicacion")}</div></div></div>', unsafe_allow_html=True)
+        
+elif "Tareas" in menu:
             st.title("✅ Tareas")
             df_t, df_u, df_com = load("Tareas", 5), load("Usuarios", 300), load("Comentarios_Tareas", 5)
             tabs_t = st.tabs(["🆕 Pendientes", "🚧 En Proceso", "✅ Completadas"])
@@ -450,4 +460,5 @@ except Exception as e:
     reportar_error_a_mario(e)
     st.error("⚠️ Error técnico reportado a Mario.")
     if st.button("Recargar"): st.rerun()
+
 
