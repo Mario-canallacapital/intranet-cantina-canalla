@@ -238,52 +238,52 @@ try:
                 st.rerun()
 
         # --- SECCIONES ---
-if "Tablón" in menu:
-            df = load("Avisos", 30) # Caché reducido a 30 segundos
-            for _, r in df.sort_values(by=df.columns[0], ascending=False).iterrows():
-                
-                # 1. Filtro real por sede
-                sede_aviso = str(r.get('Sede_Destino', 'Todas'))
-                if sede_aviso.upper() != "TODAS" and not comparten_sede(u['Sede'], sede_aviso):
-                    continue # Si no coincide la sede, se salta este aviso y no lo dibuja
-                
-                img = procesar_img_drive(r.get('Enlace_Imagen'))
-                autor = str(r.get('Nombre_Apellidos')) if not pd.isna(r.get('Nombre_Apellidos')) else "Admin"
-                
-                # 2. Respetar los saltos de línea del texto de Google Sheets
-                contenido = str(r.get("Contenido", "")).replace('\n', '<br>')
-                
-                st.markdown(f'<div class="insta-card"><div class="insta-header">📍 {sede_aviso} • {autor}</div>', unsafe_allow_html=True)
-                if img: st.image(img, use_container_width=True)
-                st.markdown(f'<div class="insta-footer"><b>{r.get("Titulo")}</b>: {contenido}<div class="insta-date">{r.get("Fecha_Publicacion")}</div></div></div>', unsafe_allow_html=True)
-        
-elif "Tareas" in menu:
-            st.title("✅ Tareas")
-            df_t, df_u, df_com = load("Tareas", 5), load("Usuarios", 300), load("Comentarios_Tareas", 5)
-            tabs_t = st.tabs(["🆕 Pendientes", "🚧 En Proceso", "✅ Completadas"])
-            with tabs_t[0]:
-                with st.expander("➕ Crear Nueva Tarea"):
-                    with st.form("nt", clear_on_submit=True):
-                        tit = st.text_input("Título")
-                        dsc = st.text_area("Descripción")
-                        fl = st.date_input("Límite", min_value=date.today())
-                        if is_admin: lp = df_u['Nombre_Apellidos'].tolist()
-                        elif is_encargado:
-                            pos = df_u[df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
-                            lp = pos[pos['Roles'].str.contains('Admin|Cocinero|Camarero', na=False, case=False)]['Nombre_Apellidos'].tolist()
-                        else:
-                            pos = df_u[df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
-                            lp = pos[pos['Roles'].str.contains('Encargado', na=False, case=False)]['Nombre_Apellidos'].tolist()
-                        
-                        nd = st.selectbox("Asignar:", lp if lp else ["Sin usuarios"])
-                        if st.form_submit_button("Crear"):
-                            if not tit.strip() or not dsc.strip() or nd == "Sin usuarios" or not nd:
-                                st.error("⛔ Rellena Título, Descripción y Asignado.")
+    if "Tablón" in menu:
+                df = load("Avisos", 30) # Caché reducido a 30 segundos
+                for _, r in df.sort_values(by=df.columns[0], ascending=False).iterrows():
+                    
+                    # 1. Filtro real por sede
+                    sede_aviso = str(r.get('Sede_Destino', 'Todas'))
+                    if sede_aviso.upper() != "TODAS" and not comparten_sede(u['Sede'], sede_aviso):
+                        continue # Si no coincide la sede, se salta este aviso y no lo dibuja
+                    
+                    img = procesar_img_drive(r.get('Enlace_Imagen'))
+                    autor = str(r.get('Nombre_Apellidos')) if not pd.isna(r.get('Nombre_Apellidos')) else "Admin"
+                    
+                    # 2. Respetar los saltos de línea del texto de Google Sheets
+                    contenido = str(r.get("Contenido", "")).replace('\n', '<br>')
+                    
+                    st.markdown(f'<div class="insta-card"><div class="insta-header">📍 {sede_aviso} • {autor}</div>', unsafe_allow_html=True)
+                    if img: st.image(img, use_container_width=True)
+                    st.markdown(f'<div class="insta-footer"><b>{r.get("Titulo")}</b>: {contenido}<div class="insta-date">{r.get("Fecha_Publicacion")}</div></div></div>', unsafe_allow_html=True)
+            
+    elif "Tareas" in menu:
+                st.title("✅ Tareas")
+                df_t, df_u, df_com = load("Tareas", 5), load("Usuarios", 300), load("Comentarios_Tareas", 5)
+                tabs_t = st.tabs(["🆕 Pendientes", "🚧 En Proceso", "✅ Completadas"])
+                with tabs_t[0]:
+                    with st.expander("➕ Crear Nueva Tarea"):
+                        with st.form("nt", clear_on_submit=True):
+                            tit = st.text_input("Título")
+                            dsc = st.text_area("Descripción")
+                            fl = st.date_input("Límite", min_value=date.today())
+                            if is_admin: lp = df_u['Nombre_Apellidos'].tolist()
+                            elif is_encargado:
+                                pos = df_u[df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
+                                lp = pos[pos['Roles'].str.contains('Admin|Cocinero|Camarero', na=False, case=False)]['Nombre_Apellidos'].tolist()
                             else:
-                                em_d = df_u[df_u['Nombre_Apellidos']==nd]['Email'].values[0]
-                                n_r = pd.DataFrame([{"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": dsc, "Asignado_A": em_d, "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl)}])
-                                conn.update(worksheet="Tareas", data=pd.concat([df_t, n_r], ignore_index=True))
-                                enviar_aviso_email(em_d, f"Tarea: {tit}", f"De: {u['Nombre_Apellidos']}\n\n{dsc}"); st.rerun()
+                                pos = df_u[df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
+                                lp = pos[pos['Roles'].str.contains('Encargado', na=False, case=False)]['Nombre_Apellidos'].tolist()
+                            
+                            nd = st.selectbox("Asignar:", lp if lp else ["Sin usuarios"])
+                            if st.form_submit_button("Crear"):
+                                if not tit.strip() or not dsc.strip() or nd == "Sin usuarios" or not nd:
+                                    st.error("⛔ Rellena Título, Descripción y Asignado.")
+                                else:
+                                    em_d = df_u[df_u['Nombre_Apellidos']==nd]['Email'].values[0]
+                                    n_r = pd.DataFrame([{"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": dsc, "Asignado_A": em_d, "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl)}])
+                                    conn.update(worksheet="Tareas", data=pd.concat([df_t, n_r], ignore_index=True))
+                                    enviar_aviso_email(em_d, f"Tarea: {tit}", f"De: {u['Nombre_Apellidos']}\n\n{dsc}"); st.rerun()
 
             def draw(est_v, t_tab):
                 with t_tab:
@@ -460,5 +460,6 @@ except Exception as e:
     reportar_error_a_mario(e)
     st.error("⚠️ Error técnico reportado a Mario.")
     if st.button("Recargar"): st.rerun()
+
 
 
