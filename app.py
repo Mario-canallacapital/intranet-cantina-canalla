@@ -1,6 +1,6 @@
-# --- VERSIÓN v35.2 (MOBILE FIX) ---
-# Actualizado: 12/02/2026 
-# Solución: Botón de menú lateral visible en móviles (Safari/Android)
+# --- VERSIÓN v35.3 (IMAGE FIX) ---
+# Actualizado: 24/02/2026 
+# Solución: Motor de imágenes de Google Drive fortificado
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -45,7 +45,7 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v35.2 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v35.3 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
 # --- BLOQUE DE SEGURIDAD ---
@@ -57,19 +57,9 @@ try:
         [data-testid="stSidebar"] { background-color: #050505 !important; border-right: 1px solid #333; }
         
         /* FIX MÓVIL: Forzar cabecera y botón de menú a ser visibles */
-        header[data-testid="stHeader"] {
-            background-color: #000000 !important;
-        }
-        [data-testid="collapsedControl"] {
-            color: #ffffff !important;
-            background-color: #1a1a1a !important;
-            border-radius: 8px;
-            margin: 10px;
-        }
-        [data-testid="collapsedControl"] svg {
-            fill: #ffffff !important;
-            color: #ffffff !important;
-        }
+        header[data-testid="stHeader"] { background-color: #000000 !important; }
+        [data-testid="collapsedControl"] { color: #ffffff !important; background-color: #1a1a1a !important; border-radius: 8px; margin: 10px; }
+        [data-testid="collapsedControl"] svg { fill: #ffffff !important; color: #ffffff !important; }
         
         .logo-container { display: flex; justify-content: center; padding: 10px 0; flex-direction: column; align-items: center; }
         .circular-logo { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 2px solid #8a3ab9; margin-bottom: 10px; }
@@ -112,13 +102,24 @@ try:
         match = re.search(r'[-\w]{25,}', url)
         return match.group(0) if match else None
 
+    # --- NUEVO MOTOR DE IMÁGENES v35.3 ---
     @st.cache_data(ttl=600)
     def procesar_img_drive(url):
         fid = extraer_id_drive(url)
         if not fid: return None
         try:
-            res = requests.get(f"https://drive.google.com/uc?export=download&id={fid}", timeout=10)
-            return f"data:image/jpeg;base64,{base64.b64encode(res.content).decode()}"
+            # Intento 1: Endpoint de miniatura (salta advertencias de Google Drive)
+            res = requests.get(f"https://drive.google.com/thumbnail?id={fid}&sz=w1000", timeout=10)
+            if res.status_code == 200 and 'image' in res.headers.get('Content-Type', '').lower():
+                return f"data:image/jpeg;base64,{base64.b64encode(res.content).decode()}"
+            
+            # Intento 2: Endpoint clásico de descarga
+            res2 = requests.get(f"https://drive.google.com/uc?export=download&id={fid}", timeout=10)
+            if res2.status_code == 200 and 'image' in res2.headers.get('Content-Type', '').lower():
+                return f"data:image/jpeg;base64,{base64.b64encode(res2.content).decode()}"
+            
+            # Si no devuelve imagen real, devolvemos None para que no salga foto rota
+            return None
         except: return None
 
     # --- CONEXIÓN ---
@@ -443,5 +444,5 @@ try:
 
 except Exception as e:
     reportar_error_a_mario(e)
-    st.error("⚠️ Error técnico reportado a Mario.")
+    st.error("⚠️ Error técnico reportado a Administración.")
     if st.button("Recargar"): st.rerun()
