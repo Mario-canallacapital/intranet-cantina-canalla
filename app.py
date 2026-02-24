@@ -1,6 +1,6 @@
-# --- VERSIÓN v35.3 (IMAGE FIX) ---
+# --- VERSIÓN v35.4 (DRIVE FIX) ---
 # Actualizado: 24/02/2026 
-# Solución: Motor de imágenes de Google Drive fortificado
+# Solución Definitiva: Carga de imágenes de Drive usando enlace directo lh3 sin pasar por el servidor.
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -45,7 +45,7 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v35.3 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v35.4 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
 # --- BLOQUE DE SEGURIDAD ---
@@ -102,25 +102,13 @@ try:
         match = re.search(r'[-\w]{25,}', url)
         return match.group(0) if match else None
 
-    # --- NUEVO MOTOR DE IMÁGENES v35.3 ---
-    @st.cache_data(ttl=600)
+    # --- NUEVO MOTOR DE IMÁGENES v35.4 (ENLACE DIRECTO) ---
     def procesar_img_drive(url):
         fid = extraer_id_drive(url)
         if not fid: return None
-        try:
-            # Intento 1: Endpoint de miniatura (salta advertencias de Google Drive)
-            res = requests.get(f"https://drive.google.com/thumbnail?id={fid}&sz=w1000", timeout=10)
-            if res.status_code == 200 and 'image' in res.headers.get('Content-Type', '').lower():
-                return f"data:image/jpeg;base64,{base64.b64encode(res.content).decode()}"
-            
-            # Intento 2: Endpoint clásico de descarga
-            res2 = requests.get(f"https://drive.google.com/uc?export=download&id={fid}", timeout=10)
-            if res2.status_code == 200 and 'image' in res2.headers.get('Content-Type', '').lower():
-                return f"data:image/jpeg;base64,{base64.b64encode(res2.content).decode()}"
-            
-            # Si no devuelve imagen real, devolvemos None para que no salga foto rota
-            return None
-        except: return None
+        # En lugar de descargar la foto con código, pasamos un enlace especial de Google
+        # que Streamlit mostrará directamente sin bloqueos de seguridad.
+        return f"https://lh3.googleusercontent.com/d/{fid}"
 
     # --- CONEXIÓN ---
     conn = st.connection("gsheets", type=GSheetsConnection)
@@ -256,11 +244,15 @@ try:
         if "Tablón" in menu:
             df = load("Avisos", 300)
             for _, r in df.sort_values(by=df.columns[0], ascending=False).iterrows():
-                img = procesar_img_drive(r.get('Enlace_Imagen'))
+                img_url = procesar_img_drive(r.get('Enlace_Imagen'))
                 autor = str(r.get('Nombre_Apellidos')) if not pd.isna(r.get('Nombre_Apellidos')) else "Admin"
                 sede = str(r.get('Sede_Destino')) if not pd.isna(r.get('Sede_Destino')) else "Todas"
                 st.markdown(f'<div class="insta-card"><div class="insta-header">📍 {sede} • {autor}</div>', unsafe_allow_html=True)
-                if img: st.image(img, use_container_width=True)
+                
+                if img_url: 
+                    # Mostramos la imagen directamente desde la URL de Google
+                    st.image(img_url, use_container_width=True)
+                    
                 st.markdown(f'<div class="insta-footer"><b>{r.get("Titulo")}</b>: {r.get("Contenido")}<div class="insta-date">{r.get("Fecha_Publicacion")}</div></div></div>', unsafe_allow_html=True)
 
         elif "Tareas" in menu:
@@ -444,5 +436,5 @@ try:
 
 except Exception as e:
     reportar_error_a_mario(e)
-    st.error("⚠️ Error técnico reportado a Administración.")
+    st.error("⚠️ Error técnico reportado a Mario.")
     if st.button("Recargar"): st.rerun()
