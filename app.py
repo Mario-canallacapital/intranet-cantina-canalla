@@ -1,6 +1,6 @@
-# --- VERSIÓN v35.1 (UNIVERSITY EDITION) ---
+# --- VERSIÓN v35.2 (MOBILE FIX) ---
 # Actualizado: 12/02/2026 
-# Guía de Uso ampliada y detallada con todas las secciones (Manuales, FAQs, Tareas...)
+# Solución: Botón de menú lateral visible en móviles (Safari/Android)
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -45,7 +45,7 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v35.1 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v35.2 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
 # --- BLOQUE DE SEGURIDAD ---
@@ -55,6 +55,21 @@ try:
         <style>
         .stApp { background-color: #000000 !important; color: #ffffff !important; }
         [data-testid="stSidebar"] { background-color: #050505 !important; border-right: 1px solid #333; }
+        
+        /* FIX MÓVIL: Forzar cabecera y botón de menú a ser visibles */
+        header[data-testid="stHeader"] {
+            background-color: #000000 !important;
+        }
+        [data-testid="collapsedControl"] {
+            color: #ffffff !important;
+            background-color: #1a1a1a !important;
+            border-radius: 8px;
+            margin: 10px;
+        }
+        [data-testid="collapsedControl"] svg {
+            fill: #ffffff !important;
+            color: #ffffff !important;
+        }
         
         .logo-container { display: flex; justify-content: center; padding: 10px 0; flex-direction: column; align-items: center; }
         .circular-logo { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 2px solid #8a3ab9; margin-bottom: 10px; }
@@ -97,11 +112,14 @@ try:
         match = re.search(r'[-\w]{25,}', url)
         return match.group(0) if match else None
 
-    # NUEVA VERSIÓN DE IMÁGENES DRIVE PARA EVITAR "IMAGEN ROTA"
+    @st.cache_data(ttl=600)
     def procesar_img_drive(url):
         fid = extraer_id_drive(url)
         if not fid: return None
-        return f"https://drive.google.com/thumbnail?id={fid}&sz=w800"
+        try:
+            res = requests.get(f"https://drive.google.com/uc?export=download&id={fid}", timeout=10)
+            return f"data:image/jpeg;base64,{base64.b64encode(res.content).decode()}"
+        except: return None
 
     # --- CONEXIÓN ---
     conn = st.connection("gsheets", type=GSheetsConnection)
@@ -187,10 +205,10 @@ try:
         alertas = []
         df_av = load("Avisos", 30)
         if not df_av.empty:
-            fechas_av = pd.to_datetime(df_av['Fecha_Publicacion'], dayfirst=True, errors='coerce')
+            fechas_av = pd.to_datetime(df_av['Fecha_Publicacion'], format="%Y-%m-%d %H:%M:%S", errors='coerce')
             if fechas_av.max() > last_log: alertas.append("📱 Nuevos avisos en el Tablón")
         if alertas:
-            st.subheader("🔔 Novedades:") 
+            st.subheader("🔔 Novedades:"); 
             for a in alertas: st.info(a)
             if st.button("Entrar"):
                 df = load("Usuarios", 0); idx = df[df['Email'] == u['Email']].index[0]
@@ -234,33 +252,15 @@ try:
                 st.rerun()
 
         # --- SECCIONES ---
-        
         if "Tablón" in menu:
-            df = load("Avisos", 30)
-            
-            # 1. CREAMOS PESOS NUMÉRICOS: Si pone 'SI', 'SÍ' o 'S', le damos un 1. A todo lo demás un 0.
-            # Quitamos los espacios invisibles con .strip() para evitar errores
-            df['peso_inicial'] = df.get('Inicial', '').astype(str).str.strip().str.upper().apply(lambda x: 1 if x in ['SI', 'SÍ', 'S'] else 0)
-            df['peso_fijado'] = df.get('Fijado', '').astype(str).str.strip().str.upper().apply(lambda x: 1 if x in ['SI', 'SÍ', 'S'] else 0)
-            
-            df['Fecha_Orden'] = pd.to_datetime(df['Fecha_Publicacion'], dayfirst=True, errors='coerce')
-            
-            # 2. ORDENAMOS usando nuestros números (1 va antes que 0)
-            df_ordenado = df.sort_values(by=['peso_inicial', 'peso_fijado', 'Fecha_Orden'], ascending=[False, False, False])
-            
-            for _, r in df_ordenado.iterrows():
-                
-                sede_aviso = str(r.get('Sede_Destino', 'Todas'))
-                if sede_aviso.upper() != "TODAS" and not comparten_sede(u['Sede'], sede_aviso):
-                    continue
-                
+            df = load("Avisos", 300)
+            for _, r in df.sort_values(by=df.columns[0], ascending=False).iterrows():
                 img = procesar_img_drive(r.get('Enlace_Imagen'))
                 autor = str(r.get('Nombre_Apellidos')) if not pd.isna(r.get('Nombre_Apellidos')) else "Admin"
-                contenido = str(r.get("Contenido", "")).replace('\n', '<br>')
-                
-                st.markdown(f'<div class="insta-card"><div class="insta-header">📍 {sede_aviso} • {autor}</div>', unsafe_allow_html=True)
+                sede = str(r.get('Sede_Destino')) if not pd.isna(r.get('Sede_Destino')) else "Todas"
+                st.markdown(f'<div class="insta-card"><div class="insta-header">📍 {sede} • {autor}</div>', unsafe_allow_html=True)
                 if img: st.image(img, use_container_width=True)
-                st.markdown(f'<div class="insta-footer"><b>{r.get("Titulo")}</b>: {contenido}<div class="insta-date">{r.get("Fecha_Publicacion")}</div></div></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="insta-footer"><b>{r.get("Titulo")}</b>: {r.get("Contenido")}<div class="insta-date">{r.get("Fecha_Publicacion")}</div></div></div>', unsafe_allow_html=True)
 
         elif "Tareas" in menu:
             st.title("✅ Tareas")
@@ -398,67 +398,47 @@ try:
                     for _, r in sub.iterrows():
                         with st.expander(r['Pregunta']): st.write(r['Respuesta'])
 
-        # --- GUÍA DE USO MEJORADA (v35.1) ---
         elif "Guía de Uso" in menu:
             st.title("ℹ️ Manual de Usuario - Intranet Cantina")
             st.markdown("### ¡Bienvenido/a al equipo! 🍴")
-            st.write("Esta herramienta es tu centro de mando para todo lo relacionado con el trabajo. Aquí tienes una guía rápida de qué puedes hacer en cada sección.")
+            st.write("Esta herramienta es tu centro de mando. Aquí tienes una guía rápida.")
             st.divider()
 
-            with st.expander("📱 1. Tablón de Novedades (Inicio)"):
-                st.info("Es lo primero que ves al entrar.")
+            with st.expander("📱 1. Tablón de Novedades"):
                 st.write("""
-                * Aquí publicamos noticias importantes, cambios de turno generales, o eventos.
-                * Funciona como un muro de redes sociales: verás la foto, el título y quién lo ha publicado.
-                * **Consejo:** Échale un ojo cada vez que entres para estar al día.
+                * Noticias, eventos y avisos importantes.
+                * Échale un ojo cada vez que entres para estar al día.
                 """)
 
-            with st.expander("📄 2. Mis Documentos (Nóminas y Contratos)"):
-                st.info("Tu archivo personal digital.")
+            with st.expander("📄 2. Mis Documentos"):
                 st.write("""
-                1. Selecciona la **categoría** (ej: Nóminas, Contratos, Bajas...).
-                2. Elige el documento específico en el desplegable.
-                3. Se abrirá una vista previa para que lo leas o lo descargues si lo necesitas.
-                * **Privacidad:** Solo tú puedes ver tus documentos (y la Administración, claro).
+                1. Selecciona la **categoría** (Nóminas, Contratos...).
+                2. Elige el documento.
+                * **Privacidad:** Solo tú puedes ver tus documentos.
                 """)
 
             with st.expander("📚 3. Manuales y Protocolos"):
-                st.info("La enciclopedia de la Cantina.")
                 st.write("""
-                Aquí encontrarás las recetas, fichas técnicas, protocolos de limpieza y normas de la casa.
-                * Están organizados por **carpetas** (Cocina, Sala, Barra...).
-                * Pincha en la carpeta para desplegar los manuales que hay dentro.
+                Aquí encontrarás recetas, protocolos de limpieza y normas.
+                * Organizados por **carpetas** (Cocina, Sala...).
                 * Pulsa "Ver" para abrir el PDF.
                 """)
 
-            with st.expander("✅ 4. Gestión de Tareas (¡Importante!)"):
-                st.warning("Tu lista de cosas por hacer.")
+            with st.expander("✅ 4. Gestión de Tareas"):
                 st.write("""
-                Las tareas tienen un **Semáforo de Prioridad** según la fecha límite:
-                * 🟢 **Verde:** Tienes tiempo de sobra.
+                * 🟢 **Verde:** Tienes tiempo.
                 * 🟠 **Naranja:** ¡La fecha límite es HOY!
-                * 🔴 **Rojo:** Tarea CADUCADA (avisa a tu encargado).
-
-                **Flujo de trabajo:**
-                1. Cuando te asignan una tarea, te llega un **email** y aparece en la pestaña **"🆕 Pendientes"**.
-                2. Si empiezas a trabajar en ella pero no acabas, pásala a **"🚧 En Proceso"**.
-                3. Cuando termines, pásala a **"✅ Completada"**.
+                * 🔴 **Rojo:** Tarea CADUCADA.
                 
-                **Comunicación:** Dentro de cada tarea puedes chatear con quien te la mandó y subir fotos para demostrar que el trabajo está hecho.
+                1. Cuando te asignan una tarea, aparece en **"🆕 Pendientes"**.
+                2. Si empiezas, pásala a **"🚧 En Proceso"**.
+                3. Al acabar, pásala a **"✅ Completada"**.
                 """)
 
-            with st.expander("❓ 5. Preguntas Frecuentes (FAQs)"):
+            with st.expander("❓ 5. FAQs y 💬 6. Chat"):
                 st.write("""
-                Respuestas rápidas a las dudas de siempre: "¿Cómo pido vacaciones?", "¿Qué hago si se rompe la cafetera?", etc.
-                Busca aquí antes de preguntar, ¡seguro que la respuesta ya existe!
-                """)
-
-            with st.expander("💬 6. Chat con Administración"):
-                st.success("Línea directa para problemas personales.")
-                st.write("""
-                Usa este chat para temas de nóminas, horarios personales o incidencias privadas.
-                * Es un chat directo con Mario/Admin.
-                * Si ves un **punto rojo 🔴** en el menú lateral, es que te han contestado.
+                * **FAQs:** Respuestas rápidas a dudas comunes.
+                * **Chat:** Si tienes un problema personal, escribe por aquí. Si ves un **punto rojo 🔴**, te han contestado.
                 """)
 
 except Exception as e:
