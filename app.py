@@ -1,6 +1,6 @@
-# --- VERSIÓN v38.1 (ULTIMATE EDITION: CAMILLION + AUTO-QUIZ 60 PREGUNTAS) ---
+# --- VERSIÓN v39.0 (DATA-DRIVEN EDITION: CAMILLION + DASHBOARD + QUIZ 120) ---
 # Actualizado: 26/02/2026 
-# Fusión: Tareas con evidencia visual y difusión masiva + Auto-Quiz con 120 preguntas totales.
+# Novedades: Dashboard Analítico de Tareas, Evidencia Visual, Plantillas y Auto-Quiz.
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -196,12 +196,12 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v38.1 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v39.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
 # --- BLOQUE PRINCIPAL ---
 try:
-    # CSS COMBINADO (Camillion + Ranking Quiz)
+    # CSS COMBINADO (Dashboard, Camillion, Quiz)
     st.markdown("""
         <style>
         .stApp { background-color: #000000 !important; color: #ffffff !important; }
@@ -220,11 +220,7 @@ try:
         .stExpander { background-color: #121212 !important; border: 1px solid #333 !important; }
         .status-expired { color: #ff4b4b !important; font-weight: bold; }
         .status-ok { color: #00ff00 !important; }
-        
-        /* Camillion Style (Req Foto) */
         .req-foto { color: #ffb703 !important; font-size: 12px; font-weight: bold; background: #332600; padding: 3px 6px; border-radius: 4px;}
-        
-        /* Estilos Tabla Ranking Quiz */
         .rank-card { background-color: #1a1a1a; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #8a3ab9; display: flex; justify-content: space-between; align-items: center;}
         .rank-pos { font-size: 24px; font-weight: bold; color: #8a3ab9; width: 40px;}
         .rank-name { font-size: 18px; font-weight: bold; flex-grow: 1; }
@@ -399,11 +395,85 @@ try:
             st.title("✅ Gestión de Tareas")
             df_t, df_u, df_com = load("Tareas", 5), load("Usuarios", 300), load("Comentarios_Tareas", 5)
             
-            # Sub-pestañas: Nueva Plantillas + Las 3 Clásicas
-            tabs_t = st.tabs(["⚡ Plantillas Rápidas", "🆕 Pendientes", "🚧 En Proceso", "✅ Completadas"])
+            # --- NUEVA ESTRUCTURA DE PESTAÑAS (Incluye Dashboard) ---
+            tabs_t = st.tabs(["📊 Dashboard Analítico", "⚡ Plantillas Rápidas", "🆕 Pendientes", "🚧 En Proceso", "✅ Completadas"])
             
-            # 1. PLANTILLAS RÁPIDAS (Difusión masiva)
+            # 1. DASHBOARD DE REPORTING
             with tabs_t[0]:
+                st.subheader("📊 Centro de Control de Operaciones")
+                
+                # Proteger columnas de fechas por si no existen en versiones viejas
+                if 'Fecha_Creacion' not in df_t.columns: df_t['Fecha_Creacion'] = pd.NaT
+                if 'Fecha_Completada' not in df_t.columns: df_t['Fecha_Completada'] = pd.NaT
+                
+                # Filtro de visibilidad: Empleados solo ven lo suyo, Admin ve todo
+                if not is_admin and not is_encargado:
+                    df_dash = df_t[(df_t['Asignado_A'] == u['Email']) | (df_t['Creado_Por'] == u['Nombre_Apellidos'])].copy()
+                else:
+                    df_dash = df_t.copy()
+
+                # Diccionario para convertir Emails en Nombres reales en el dashboard
+                map_email_nombre = dict(zip(df_u['Email'], df_u['Nombre_Apellidos']))
+                df_dash['Nombre_Empleado'] = df_dash['Asignado_A'].map(map_email_nombre).fillna(df_dash['Asignado_A'])
+
+                # --- FILTROS UI ---
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    lista_emps = ["Todos"] + sorted(df_dash['Nombre_Empleado'].dropna().unique().tolist())
+                    filtro_emp = st.selectbox("👤 Empleado Asignado", lista_emps)
+                with col2:
+                    lista_est = df_dash['Estado'].dropna().unique().tolist()
+                    filtro_est = st.multiselect("📌 Estado de la Tarea", lista_est, default=lista_est)
+                with col3:
+                    filtro_creacion = st.date_input("📅 Rango Fecha Creación", value=[], key="d_crea")
+                with col4:
+                    filtro_cierre = st.date_input("🏁 Rango Fecha Cierre", value=[], key="d_cie")
+
+                # --- APLICAR FILTROS ---
+                if filtro_emp != "Todos":
+                    df_dash = df_dash[df_dash['Nombre_Empleado'] == filtro_emp]
+                if filtro_est:
+                    df_dash = df_dash[df_dash['Estado'].isin(filtro_est)]
+                
+                if len(filtro_creacion) == 2:
+                    df_dash['FC_dt'] = pd.to_datetime(df_dash['Fecha_Creacion'], errors='coerce').dt.date
+                    df_dash = df_dash[(df_dash['FC_dt'] >= filtro_creacion[0]) & (df_dash['FC_dt'] <= filtro_creacion[1])]
+                
+                if len(filtro_cierre) == 2:
+                    df_dash['FCi_dt'] = pd.to_datetime(df_dash['Fecha_Completada'], errors='coerce').dt.date
+                    df_dash = df_dash[(df_dash['FCi_dt'] >= filtro_cierre[0]) & (df_dash['FCi_dt'] <= filtro_cierre[1])]
+
+                # --- MÉTRICAS ---
+                st.divider()
+                c1, c2, c3, c4 = st.columns(4)
+                tot = len(df_dash)
+                comp = len(df_dash[df_dash['Estado'] == 'Completada'])
+                proc = len(df_dash[df_dash['Estado'] == 'En Proceso'])
+                pend = len(df_dash[df_dash['Estado'] == 'Pendiente'])
+                
+                c1.metric("📋 Total Tareas", tot)
+                c2.metric("✅ Completadas", comp)
+                c3.metric("🚧 En Proceso", proc)
+                c4.metric("🆕 Pendientes", pend)
+
+                # --- GRÁFICOS ---
+                if tot > 0:
+                    st.write("")
+                    col_chart1, col_chart2 = st.columns(2)
+                    with col_chart1:
+                        st.markdown("**Distribución por Estado**")
+                        st.bar_chart(df_dash['Estado'].value_counts(), color="#8a3ab9")
+                    with col_chart2:
+                        if filtro_emp == "Todos":
+                            st.markdown("**Carga de trabajo por Empleado**")
+                            st.bar_chart(df_dash['Nombre_Empleado'].value_counts())
+                        else:
+                            st.markdown("**Progreso del Empleado**")
+                            porcentaje = int((comp / tot) * 100) if tot > 0 else 0
+                            st.progress(porcentaje / 100.0, text=f"Tasa de finalización: {porcentaje}%")
+
+            # 2. PLANTILLAS RÁPIDAS (Difusión masiva)
+            with tabs_t[1]:
                 st.write("Lanza rutinas predefinidas a todo el equipo al instante.")
                 col1, col2 = st.columns(2)
                 
@@ -415,6 +485,7 @@ try:
                     
                     nuevas_tareas = []
                     desc_foto = desc + " [REQ_FOTO]"
+                    hoy_str = str(date.today())
                     
                     for _, empleado in usuarios_destino.iterrows():
                         nuevas_tareas.append({
@@ -425,7 +496,9 @@ try:
                             "Creado_Por": u['Nombre_Apellidos'],
                             "Sede": u['Sede'],
                             "Estado": "Pendiente",
-                            "Fecha_Limite": str(date.today())
+                            "Fecha_Limite": hoy_str,
+                            "Fecha_Creacion": hoy_str,
+                            "Fecha_Completada": ""
                         })
                     
                     conn.update(worksheet="Tareas", data=pd.concat([df_t, pd.DataFrame(nuevas_tareas)], ignore_index=True))
@@ -447,8 +520,8 @@ try:
                         if st.button("Lanzar a Camareros", key="t_aper_sala"):
                             lanzar_tarea_masiva("Apertura de Sala", "Realizar tareas de apertura (Luces, TPV, Purgar barriles, Repasar mesas).", "Camarero")
 
-            # 2. CREACIÓN MANUAL DE TAREAS
-            with tabs_t[1]:
+            # 3. CREACIÓN MANUAL DE TAREAS
+            with tabs_t[2]:
                 with st.expander("➕ Crear Nueva Tarea Personalizada"):
                     with st.form("nt", clear_on_submit=True):
                         tit = st.text_input("Título")
@@ -469,21 +542,22 @@ try:
                             else:
                                 final_desc = dsc + " [REQ_FOTO]" if requiere_foto else dsc
                                 nuevas_t = []
+                                hoy_str = str(date.today())
                                 
                                 if "Difusión:" in nd:
                                     rol_buscado = "Camarero" if "Camareros" in nd else "Cocinero"
                                     empleados_dif = pos_u[pos_u['Roles'].str.contains(rol_buscado, na=False, case=False)]
                                     for _, emp in empleados_dif.iterrows():
-                                        nuevas_t.append({"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": final_desc, "Asignado_A": emp['Email'], "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl)})
+                                        nuevas_t.append({"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": final_desc, "Asignado_A": emp['Email'], "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl), "Fecha_Creacion": hoy_str, "Fecha_Completada": ""})
                                 else:
                                     em_d = df_u[df_u['Nombre_Apellidos']==nd]['Email'].values[0]
-                                    nuevas_t.append({"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": final_desc, "Asignado_A": em_d, "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl)})
+                                    nuevas_t.append({"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": final_desc, "Asignado_A": em_d, "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl), "Fecha_Creacion": hoy_str, "Fecha_Completada": ""})
                                 
                                 conn.update(worksheet="Tareas", data=pd.concat([df_t, pd.DataFrame(nuevas_t)], ignore_index=True))
                                 st.success("Tarea(s) creada(s) con éxito.")
                                 time.sleep(1); st.rerun()
 
-            # MOTOR DE RENDERIZADO DE TAREAS
+            # MOTOR DE RENDERIZADO DE TAREAS (Pendientes, En Proceso, Completadas)
             def draw(est_v, t_tab):
                 with t_tab:
                     f = df_t[df_t['Estado'] == est_v]
@@ -528,20 +602,27 @@ try:
                                     n_c = pd.DataFrame([{"ID_Tarea": r['ID_Tarea'], "Nombre_Apellidos": u['Nombre_Apellidos'], "Texto": val, "Fecha_Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}])
                                     conn.update(worksheet="Comentarios_Tareas", data=pd.concat([df_com, n_c], ignore_index=True)); st.rerun()
                             
-                            # Cambio de Estado con Validación Camillion
+                            # Cambio de Estado con Validación y Registro de Fecha
                             ns = st.selectbox("Estado:", ["Pendiente", "En Proceso", "Completada"], index=["Pendiente", "En Proceso", "Completada"].index(r['Estado']), key=f"s_{r['ID_Tarea']}")
                             
                             if ns != r['Estado']:
                                 if ns == "Completada" and es_evidencia:
                                     tiene_foto = c_l[c_l['Texto'].str.contains("data:image", na=False)].shape[0] > 0
                                     if not tiene_foto:
-                                        st.error("⛔ Tarea Bloqueada: El creador ha marcado que esta tarea requiere EVIDENCIA VISUAL. Debes subir una foto demostrando el trabajo antes de completarla.")
+                                        st.error("⛔ Tarea Bloqueada: Debes subir una foto demostrando el trabajo antes de completarla.")
                                     else:
-                                        df_t.at[idx, 'Estado'] = ns; conn.update(worksheet="Tareas", data=df_t); st.rerun()
+                                        df_t.at[idx, 'Estado'] = ns
+                                        df_t.at[idx, 'Fecha_Completada'] = str(date.today())
+                                        conn.update(worksheet="Tareas", data=df_t); st.rerun()
                                 else:
-                                    df_t.at[idx, 'Estado'] = ns; conn.update(worksheet="Tareas", data=df_t); st.rerun()
+                                    df_t.at[idx, 'Estado'] = ns
+                                    if ns == "Completada":
+                                        df_t.at[idx, 'Fecha_Completada'] = str(date.today())
+                                    else:
+                                        df_t.at[idx, 'Fecha_Completada'] = "" # Borra fecha si vuelve atrás
+                                    conn.update(worksheet="Tareas", data=df_t); st.rerun()
                                     
-            draw("Pendiente", tabs_t[1]); draw("En Proceso", tabs_t[2]); draw("Completada", tabs_t[3])
+            draw("Pendiente", tabs_t[2]); draw("En Proceso", tabs_t[3]); draw("Completada", tabs_t[4])
 
         elif "Chat" in menu:
             st.title("💬 Chat Soporte")
@@ -613,7 +694,7 @@ try:
                     for _, r in sub.iterrows():
                         with st.expander(r['Pregunta']): st.write(r['Respuesta'])
 
-        # --- SECCIÓN: QUIZ MENSUAL AUTO (Con las 60 preguntas) ---
+        # --- SECCIÓN: QUIZ MENSUAL AUTO ---
         elif "Quiz" in menu:
             st.title(f"🏆 Quiz Mensual: {MES_ACTUAL_QUIZ}")
             st.write("Pon a prueba tus conocimientos sobre los Protocolos y Normas. Tienes **1 solo intento**. Las preguntas cambiarán automáticamente el mes que viene. ¡Compite por el primer puesto en el ranking!")
@@ -662,7 +743,6 @@ try:
                 with st.form("quiz_form"):
                     respuestas_usuario = {}
                     for i, (pregunta, (opciones, correcta_idx)) in enumerate(diccionario_preguntas.items()):
-                        # Extraemos el número original si lo tiene, para dejarlo limpio y enumerar de 1 a 20
                         pregunta_limpia = re.sub(r'^\d+\.\s*', '', pregunta)
                         st.markdown(f"**{i+1}. {pregunta_limpia}**")
                         respuestas_usuario[i] = st.radio("Opciones", opciones, key=f"q_{i}", index=None, label_visibility="collapsed")
@@ -715,6 +795,7 @@ try:
                 * 🟢 **Verde:** Tienes tiempo. | 🟠 **Naranja:** ¡Fecha límite HOY! | 🔴 **Rojo:** Tarea CADUCADA.
                 * **Evidencia Visual (📸):** Si una tarea tiene el indicador amarillo de Evidencia, **no podrás completarla** hasta que subas una foto del trabajo hecho al chat de la tarea.
                 * **Tareas de Difusión:** Si ves una tarea general (ej. Limpieza general), es porque se ha mandado a todos tus compañeros a la vez. ¡Sube tu foto para completarla!
+                * **Dashboard Analítico:** La nueva pestaña inicial te permite filtrar tus tareas y revisar tus estadísticas de rendimiento y trabajo pendiente.
                 """)
 
             with st.expander("❓ 5. FAQs y 💬 6. Chat"):
