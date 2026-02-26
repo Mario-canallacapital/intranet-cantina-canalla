@@ -472,54 +472,6 @@ try:
                             porcentaje = int((comp / tot) * 100) if tot > 0 else 0
                             st.progress(porcentaje / 100.0, text=f"Tasa de finalización: {porcentaje}%")
 
-            # 2. PLANTILLAS RÁPIDAS (Difusión masiva)
-            with tabs_t[1]:
-                st.write("Lanza rutinas predefinidas a todo el equipo al instante.")
-                col1, col2 = st.columns(2)
-                
-                def lanzar_tarea_masiva(titulo, desc, rol_destino):
-                    usuarios_destino = df_u[df_u['Roles'].str.contains(rol_destino, na=False, case=False) & df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
-                    if usuarios_destino.empty:
-                        st.warning(f"No hay usuarios con el rol {rol_destino} en tu sede.")
-                        return
-                    
-                    nuevas_tareas = []
-                    desc_foto = desc + " [REQ_FOTO]"
-                    hoy_str = str(date.today())
-                    
-                    for _, empleado in usuarios_destino.iterrows():
-                        nuevas_tareas.append({
-                            "ID_Tarea": str(uuid.uuid4())[:8],
-                            "Titulo_Tarea": titulo,
-                            "Descripción": desc_foto,
-                            "Asignado_A": empleado['Email'],
-                            "Creado_Por": u['Nombre_Apellidos'],
-                            "Sede": u['Sede'],
-                            "Estado": "Pendiente",
-                            "Fecha_Limite": hoy_str,
-                            "Fecha_Creacion": hoy_str,
-                            "Fecha_Completada": ""
-                        })
-                    
-                    conn.update(worksheet="Tareas", data=pd.concat([df_t, pd.DataFrame(nuevas_tareas)], ignore_index=True))
-                    st.success(f"🚀 Tarea enviada a {len(nuevas_tareas)} empleados ({rol_destino}).")
-                    time.sleep(1)
-                    st.rerun()
-
-                with col1:
-                    with st.container(border=True):
-                        st.subheader("🧹 Cierre de Cocina")
-                        st.write("Enviar checklist de cierre a todo el equipo de cocina. Exige foto.")
-                        if st.button("Lanzar a Cocineros", key="t_cierre_cocina"):
-                            lanzar_tarea_masiva("Cierre de Cocina", "Realizar tareas de cierre según protocolo (Campana, Baño María, Etiquetado).", "Cocinero")
-
-                with col2:
-                    with st.container(border=True):
-                        st.subheader("☀️ Apertura de Sala")
-                        st.write("Enviar checklist de apertura al equipo de sala. Exige foto.")
-                        if st.button("Lanzar a Camareros", key="t_aper_sala"):
-                            lanzar_tarea_masiva("Apertura de Sala", "Realizar tareas de apertura (Luces, TPV, Purgar barriles, Repasar mesas).", "Camarero")
-
             # 3. CREACIÓN MANUAL DE TAREAS
             with tabs_t[2]:
                 with st.expander("➕ Crear Nueva Tarea Personalizada"):
@@ -817,3 +769,4 @@ except Exception as e:
     reportar_error_a_mario(e)
     st.error("⚠️ Error técnico reportado a Mario.")
     if st.button("Recargar"): st.rerun()
+
