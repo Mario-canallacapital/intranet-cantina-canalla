@@ -1,6 +1,6 @@
-# --- VERSIÓN v37.0 (AUTO-QUIZ GAMIFICATION) ---
+# --- VERSIÓN v38.1 (ULTIMATE EDITION: CAMILLION + AUTO-QUIZ 60 PREGUNTAS) ---
 # Actualizado: 26/02/2026 
-# Novedades: Selección automática mensual de 20 preguntas desde un banco de 60 por puesto.
+# Fusión: Tareas con evidencia visual y difusión masiva + Auto-Quiz con 120 preguntas totales.
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -26,7 +26,7 @@ st.set_page_config(page_title="Intranet Cantina Canalla", layout="wide", page_ic
 EMAIL_GENERICO = "avisosapp.cantinacanalla@gmail.com" 
 PASS_GENERICA = "pvyglchitjtupzoz" 
 
-# --- LÓGICA AUTOMÁTICA DEL MES ---
+# --- LÓGICA AUTOMÁTICA DEL MES (QUIZ) ---
 meses_espanol = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 hoy = datetime.now()
 MES_ACTUAL_QUIZ = f"{meses_espanol[hoy.month - 1]} {hoy.year}"
@@ -174,9 +174,9 @@ if len(POOL_COCINA) >= 20:
 else:
     QUIZ_COCINA = POOL_COCINA
 
-# Reseteamos la semilla a la normalidad para el resto de la app
 random.seed()
 
+# --- FUNCIONES BASE ---
 def enviar_aviso_email(destinatario, asunto, cuerpo):
     try:
         msg = MIMEMultipart()
@@ -196,24 +196,21 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v37.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v38.1 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
-# --- BLOQUE DE SEGURIDAD ---
+# --- BLOQUE PRINCIPAL ---
 try:
-    # --- CSS ---
+    # CSS COMBINADO (Camillion + Ranking Quiz)
     st.markdown("""
         <style>
         .stApp { background-color: #000000 !important; color: #ffffff !important; }
         [data-testid="stSidebar"] { background-color: #050505 !important; border-right: 1px solid #333; }
-        
         header[data-testid="stHeader"] { background-color: #000000 !important; }
         [data-testid="collapsedControl"] { color: #ffffff !important; background-color: #1a1a1a !important; border-radius: 8px; margin: 10px; }
         [data-testid="collapsedControl"] svg { fill: #ffffff !important; color: #ffffff !important; }
-        
         .logo-container { display: flex; justify-content: center; padding: 10px 0; flex-direction: column; align-items: center; }
         .circular-logo { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 2px solid #8a3ab9; margin-bottom: 10px; }
-        
         .insta-card { background-color: #121212 !important; border-radius: 12px; border: 1px solid #333; margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto; overflow: hidden; }
         .insta-header { padding: 12px; border-bottom: 1px solid #333; font-weight: 700; color: white !important; }
         .bubble { padding: 10px 15px; border-radius: 20px; margin-bottom: 10px; max-width: 75%; font-size: 14px; }
@@ -224,6 +221,10 @@ try:
         .status-expired { color: #ff4b4b !important; font-weight: bold; }
         .status-ok { color: #00ff00 !important; }
         
+        /* Camillion Style (Req Foto) */
+        .req-foto { color: #ffb703 !important; font-size: 12px; font-weight: bold; background: #332600; padding: 3px 6px; border-radius: 4px;}
+        
+        /* Estilos Tabla Ranking Quiz */
         .rank-card { background-color: #1a1a1a; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #8a3ab9; display: flex; justify-content: space-between; align-items: center;}
         .rank-pos { font-size: 24px; font-weight: bold; color: #8a3ab9; width: 40px;}
         .rank-name { font-size: 18px; font-weight: bold; flex-grow: 1; }
@@ -231,7 +232,6 @@ try:
         </style>
     """, unsafe_allow_html=True)
 
-    # --- FUNCIONES ---
     def cargar_logo_base64():
         try:
             with open("armband-PhotoRoom.png-PhotoRoom.png", "rb") as f:
@@ -262,21 +262,18 @@ try:
         if not fid: return None
         return f"https://lh3.googleusercontent.com/d/{fid}"
 
-    # --- CONEXIÓN ---
     conn = st.connection("gsheets", type=GSheetsConnection)
     def load(p, ttl=5):
-        max_retries = 3
-        for i in range(max_retries):
+        for i in range(3):
             try: return conn.read(worksheet=p, ttl=ttl)
             except Exception as e:
-                if i == max_retries - 1: raise e
+                if i == 2: raise e
                 time.sleep(2)
 
-    # --- SESIÓN ---
     if 'auth' not in st.session_state: st.session_state.auth = False
     if 'page' not in st.session_state: st.session_state.page = "login"
 
-    # --- 1. LOGIN ---
+    # --- LOGIN ---
     if not st.session_state.auth:
         col1, col2, col3 = st.columns([1,1.5,1])
         with col2:
@@ -325,7 +322,6 @@ try:
                             df.at[idx, 'Contraseña'] = new_p; conn.update(worksheet="Usuarios", data=df)
                             st.session_state.page = "login"; st.rerun()
 
-    # --- 2. CAMBIO CLAVE ---
     elif st.session_state.page == "change_password":
         st.title("🔑 Cambio de Clave Obligatorio")
         with st.form("cp"):
@@ -337,7 +333,6 @@ try:
                     conn.update(worksheet="Usuarios", data=df)
                     st.session_state.page = "notifications"; st.rerun()
 
-    # --- 3. NOTIFICACIONES ---
     elif st.session_state.page == "notifications":
         st.title(f"👋 Hola, {st.session_state.user['Nombre_Apellidos']}")
         u = st.session_state.user
@@ -360,7 +355,6 @@ try:
             df.at[idx, 'Ultima_Conexion'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             conn.update(worksheet="Usuarios", data=df); st.session_state.page = "main"; st.rerun()
 
-    # --- 4. APP PRINCIPAL ---
     elif st.session_state.page == "main":
         u = st.session_state.user
         roles_disponibles = [r.strip() for r in str(u.get('Roles', '')).split(',') if r.strip()]
@@ -388,9 +382,7 @@ try:
             menu = st.radio("NAVEGACIÓN", ["📱 Tablón de Novedades", "📄 Mis Documentos", "📚 Manuales", "✅ Tareas", "❓ FAQs", f"💬 Chat{dot}", "🏆 Quiz Mensual", "ℹ️ Guía de Uso"])
             
             st.write("")
-            if st.button("Salir"):
-                st.session_state.clear()
-                st.rerun()
+            if st.button("Salir"): st.session_state.clear(); st.rerun()
 
         # --- SECCIONES ---
         if "Tablón" in menu:
@@ -404,37 +396,99 @@ try:
                 st.markdown(f'<div class="insta-footer"><b>{r.get("Titulo")}</b>: {r.get("Contenido")}<div class="insta-date">{r.get("Fecha_Publicacion")}</div></div></div>', unsafe_allow_html=True)
 
         elif "Tareas" in menu:
-            st.title("✅ Tareas")
+            st.title("✅ Gestión de Tareas")
             df_t, df_u, df_com = load("Tareas", 5), load("Usuarios", 300), load("Comentarios_Tareas", 5)
-            tabs_t = st.tabs(["🆕 Pendientes", "🚧 En Proceso", "✅ Completadas"])
+            
+            # Sub-pestañas: Nueva Plantillas + Las 3 Clásicas
+            tabs_t = st.tabs(["⚡ Plantillas Rápidas", "🆕 Pendientes", "🚧 En Proceso", "✅ Completadas"])
+            
+            # 1. PLANTILLAS RÁPIDAS (Difusión masiva)
             with tabs_t[0]:
-                with st.expander("➕ Crear Nueva Tarea"):
+                st.write("Lanza rutinas predefinidas a todo el equipo al instante.")
+                col1, col2 = st.columns(2)
+                
+                def lanzar_tarea_masiva(titulo, desc, rol_destino):
+                    usuarios_destino = df_u[df_u['Roles'].str.contains(rol_destino, na=False, case=False) & df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
+                    if usuarios_destino.empty:
+                        st.warning(f"No hay usuarios con el rol {rol_destino} en tu sede.")
+                        return
+                    
+                    nuevas_tareas = []
+                    desc_foto = desc + " [REQ_FOTO]"
+                    
+                    for _, empleado in usuarios_destino.iterrows():
+                        nuevas_tareas.append({
+                            "ID_Tarea": str(uuid.uuid4())[:8],
+                            "Titulo_Tarea": titulo,
+                            "Descripción": desc_foto,
+                            "Asignado_A": empleado['Email'],
+                            "Creado_Por": u['Nombre_Apellidos'],
+                            "Sede": u['Sede'],
+                            "Estado": "Pendiente",
+                            "Fecha_Limite": str(date.today())
+                        })
+                    
+                    conn.update(worksheet="Tareas", data=pd.concat([df_t, pd.DataFrame(nuevas_tareas)], ignore_index=True))
+                    st.success(f"🚀 Tarea enviada a {len(nuevas_tareas)} empleados ({rol_destino}).")
+                    time.sleep(1)
+                    st.rerun()
+
+                with col1:
+                    with st.container(border=True):
+                        st.subheader("🧹 Cierre de Cocina")
+                        st.write("Enviar checklist de cierre a todo el equipo de cocina. Exige foto.")
+                        if st.button("Lanzar a Cocineros", key="t_cierre_cocina"):
+                            lanzar_tarea_masiva("Cierre de Cocina", "Realizar tareas de cierre según protocolo (Campana, Baño María, Etiquetado).", "Cocinero")
+
+                with col2:
+                    with st.container(border=True):
+                        st.subheader("☀️ Apertura de Sala")
+                        st.write("Enviar checklist de apertura al equipo de sala. Exige foto.")
+                        if st.button("Lanzar a Camareros", key="t_aper_sala"):
+                            lanzar_tarea_masiva("Apertura de Sala", "Realizar tareas de apertura (Luces, TPV, Purgar barriles, Repasar mesas).", "Camarero")
+
+            # 2. CREACIÓN MANUAL DE TAREAS
+            with tabs_t[1]:
+                with st.expander("➕ Crear Nueva Tarea Personalizada"):
                     with st.form("nt", clear_on_submit=True):
                         tit = st.text_input("Título")
                         dsc = st.text_area("Descripción")
                         fl = st.date_input("Límite", min_value=date.today())
-                        if is_admin: lp = df_u['Nombre_Apellidos'].tolist()
-                        elif is_encargado:
-                            pos = df_u[df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
-                            lp = pos[pos['Roles'].str.contains('Admin|Cocinero|Camarero', na=False, case=False)]['Nombre_Apellidos'].tolist()
-                        else:
-                            pos = df_u[df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
-                            lp = pos[pos['Roles'].str.contains('Encargado', na=False, case=False)]['Nombre_Apellidos'].tolist()
                         
-                        nd = st.selectbox("Asignar:", lp if lp else ["Sin usuarios"])
-                        if st.form_submit_button("Crear"):
+                        pos_u = df_u[df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
+                        lp = pos_u['Nombre_Apellidos'].tolist()
+                        
+                        opciones_asignacion = ["Sin usuarios", "📣 Difusión: Todos los Camareros", "📣 Difusión: Todos los Cocineros"] + lp
+                        nd = st.selectbox("Asignar a:", opciones_asignacion)
+                        
+                        requiere_foto = st.checkbox("📸 Requiere evidencia visual (El usuario deberá subir una foto para completarla)")
+                        
+                        if st.form_submit_button("Crear Tarea"):
                             if not tit.strip() or not dsc.strip() or nd == "Sin usuarios" or not nd:
                                 st.error("⛔ Rellena Título, Descripción y Asignado.")
                             else:
-                                em_d = df_u[df_u['Nombre_Apellidos']==nd]['Email'].values[0]
-                                n_r = pd.DataFrame([{"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": dsc, "Asignado_A": em_d, "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl)}])
-                                conn.update(worksheet="Tareas", data=pd.concat([df_t, n_r], ignore_index=True))
-                                enviar_aviso_email(em_d, f"Tarea: {tit}", f"De: {u['Nombre_Apellidos']}\n\n{dsc}"); st.rerun()
+                                final_desc = dsc + " [REQ_FOTO]" if requiere_foto else dsc
+                                nuevas_t = []
+                                
+                                if "Difusión:" in nd:
+                                    rol_buscado = "Camarero" if "Camareros" in nd else "Cocinero"
+                                    empleados_dif = pos_u[pos_u['Roles'].str.contains(rol_buscado, na=False, case=False)]
+                                    for _, emp in empleados_dif.iterrows():
+                                        nuevas_t.append({"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": final_desc, "Asignado_A": emp['Email'], "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl)})
+                                else:
+                                    em_d = df_u[df_u['Nombre_Apellidos']==nd]['Email'].values[0]
+                                    nuevas_t.append({"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": final_desc, "Asignado_A": em_d, "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl)})
+                                
+                                conn.update(worksheet="Tareas", data=pd.concat([df_t, pd.DataFrame(nuevas_t)], ignore_index=True))
+                                st.success("Tarea(s) creada(s) con éxito.")
+                                time.sleep(1); st.rerun()
 
+            # MOTOR DE RENDERIZADO DE TAREAS
             def draw(est_v, t_tab):
                 with t_tab:
                     f = df_t[df_t['Estado'] == est_v]
                     if not is_admin: f = f[(f['Asignado_A'] == u['Email']) | (f['Creado_Por'] == u['Nombre_Apellidos'])]
+                    
                     for idx, r in f.iterrows():
                         status_icon, limite_str = "🔵", ""
                         if r.get('Fecha_Limite'):
@@ -445,27 +499,49 @@ try:
                                 elif dias_rest == 0: status_icon, limite_str = "🟠", "(⏳ HOY)"
                                 else: status_icon, limite_str = "🟢", f"(📅 {dias_rest} días)"
                             except: pass
-                        header_txt = f"{status_icon} **{r['Titulo_Tarea']}** | De: {r['Creado_Por']} ➔ Para: {r.get('Asignado_A', 'N/A')} {limite_str}"
+                        
+                        desc_limpia = str(r.get('Descripción', ''))
+                        es_evidencia = "[REQ_FOTO]" in desc_limpia
+                        desc_limpia = desc_limpia.replace("[REQ_FOTO]", "").strip()
+                        
+                        req_badge = " 📸 REQUIERE FOTO" if es_evidencia else ""
+                        header_txt = f"{status_icon} **{r['Titulo_Tarea']}** | De: {r['Creado_Por']} ➔ Para: {r.get('Asignado_A', 'N/A')} {limite_str} {req_badge}"
+                        
                         with st.expander(header_txt):
-                            st.write(f"**Descripción:** {r.get('Descripción', 'Sin detalle')}")
+                            st.write(f"**Descripción:** {desc_limpia}")
+                            if es_evidencia:
+                                st.markdown('<span class="req-foto">⚠️ Esta tarea exige evidencia visual para marcarse como completada.</span>', unsafe_allow_html=True)
                             st.divider()
+                            
                             c_l = df_com[df_com['ID_Tarea'] == r['ID_Tarea']]
                             for _, c in c_l.iterrows():
                                 with st.chat_message("user"):
                                     st.write(f"**{c['Nombre_Apellidos']}**")
                                     if "data:image" in str(c['Texto']): st.image(c['Texto'], width=300)
                                     else: st.write(c['Texto'])
+                            
                             with st.form(key=f"c_{r['ID_Tarea']}", clear_on_submit=True):
-                                mc, fc = st.text_input("Mensaje"), st.file_uploader("📸", type=['jpg','png'], key=f"f_{r['ID_Tarea']}")
-                                if st.form_submit_button("Responder"):
+                                mc, fc = st.text_input("Mensaje"), st.file_uploader("📸 Subir Foto/Evidencia", type=['jpg','png'], key=f"f_{r['ID_Tarea']}")
+                                if st.form_submit_button("Enviar Comentario"):
                                     val = mc
                                     if fc: val = comprimir_foto(fc)
                                     n_c = pd.DataFrame([{"ID_Tarea": r['ID_Tarea'], "Nombre_Apellidos": u['Nombre_Apellidos'], "Texto": val, "Fecha_Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}])
                                     conn.update(worksheet="Comentarios_Tareas", data=pd.concat([df_com, n_c], ignore_index=True)); st.rerun()
+                            
+                            # Cambio de Estado con Validación Camillion
                             ns = st.selectbox("Estado:", ["Pendiente", "En Proceso", "Completada"], index=["Pendiente", "En Proceso", "Completada"].index(r['Estado']), key=f"s_{r['ID_Tarea']}")
+                            
                             if ns != r['Estado']:
-                                df_t.at[idx, 'Estado'] = ns; conn.update(worksheet="Tareas", data=df_t); st.rerun()
-            draw("Pendiente", tabs_t[0]); draw("En Proceso", tabs_t[1]); draw("Completada", tabs_t[2])
+                                if ns == "Completada" and es_evidencia:
+                                    tiene_foto = c_l[c_l['Texto'].str.contains("data:image", na=False)].shape[0] > 0
+                                    if not tiene_foto:
+                                        st.error("⛔ Tarea Bloqueada: El creador ha marcado que esta tarea requiere EVIDENCIA VISUAL. Debes subir una foto demostrando el trabajo antes de completarla.")
+                                    else:
+                                        df_t.at[idx, 'Estado'] = ns; conn.update(worksheet="Tareas", data=df_t); st.rerun()
+                                else:
+                                    df_t.at[idx, 'Estado'] = ns; conn.update(worksheet="Tareas", data=df_t); st.rerun()
+                                    
+            draw("Pendiente", tabs_t[1]); draw("En Proceso", tabs_t[2]); draw("Completada", tabs_t[3])
 
         elif "Chat" in menu:
             st.title("💬 Chat Soporte")
@@ -509,7 +585,6 @@ try:
                     if cats_d:
                         sc = st.selectbox("📂 Tipo:", ["Todos"] + cats_d)
                         if sc != "Todas": dv = dv[dv['Categoria'] == sc]
-            
             if not dv.empty:
                 sel_d = st.selectbox("Elegir Documento:", dv['Nombre Documento'])
                 st.components.v1.iframe(f"https://drive.google.com/file/d/{extraer_id_drive(dv[dv['Nombre Documento']==sel_d]['Enlace_Archivo'].values[0])}/preview", height=800)
@@ -538,7 +613,7 @@ try:
                     for _, r in sub.iterrows():
                         with st.expander(r['Pregunta']): st.write(r['Respuesta'])
 
-        # --- SECCIÓN: QUIZ MENSUAL AUTO ---
+        # --- SECCIÓN: QUIZ MENSUAL AUTO (Con las 60 preguntas) ---
         elif "Quiz" in menu:
             st.title(f"🏆 Quiz Mensual: {MES_ACTUAL_QUIZ}")
             st.write("Pon a prueba tus conocimientos sobre los Protocolos y Normas. Tienes **1 solo intento**. Las preguntas cambiarán automáticamente el mes que viene. ¡Compite por el primer puesto en el ranking!")
@@ -627,40 +702,25 @@ try:
             st.divider()
 
             with st.expander("📱 1. Tablón de Novedades"):
-                st.write("""
-                * Noticias, eventos y avisos importantes.
-                * Échale un ojo cada vez que entres para estar al día.
-                """)
+                st.write("* Noticias, eventos y avisos importantes. Échale un ojo cada vez que entres.")
 
             with st.expander("📄 2. Mis Documentos"):
-                st.write("""
-                1. Selecciona la **categoría** (Nóminas, Contratos...).
-                2. Elige el documento.
-                * **Privacidad:** Solo tú puedes ver tus documentos.
-                """)
+                st.write("* Selecciona la categoría y visualiza tus nóminas o contratos de manera privada.")
 
             with st.expander("📚 3. Manuales y Protocolos"):
-                st.write("""
-                Aquí encontrarás recetas, protocolos de limpieza y normas.
-                * Organizados por **carpetas** (Cocina, Sala...).
-                * Pulsa "Ver" para abrir el PDF.
-                """)
+                st.write("* Recetas, protocolos de limpieza y normas organizados por carpetas.")
 
-            with st.expander("✅ 4. Gestión de Tareas"):
+            with st.expander("✅ 4. Gestión de Tareas (¡Novedad Visual!)"):
                 st.write("""
-                * 🟢 **Verde:** Tienes tiempo.
-                * 🟠 **Naranja:** ¡La fecha límite es HOY!
-                * 🔴 **Rojo:** Tarea CADUCADA.
-                
-                1. Cuando te asignan una tarea, aparece en **"🆕 Pendientes"**.
-                2. Si empiezas, pásala a **"🚧 En Proceso"**.
-                3. Al acabar, pásala a **"✅ Completada"**.
+                * 🟢 **Verde:** Tienes tiempo. | 🟠 **Naranja:** ¡Fecha límite HOY! | 🔴 **Rojo:** Tarea CADUCADA.
+                * **Evidencia Visual (📸):** Si una tarea tiene el indicador amarillo de Evidencia, **no podrás completarla** hasta que subas una foto del trabajo hecho al chat de la tarea.
+                * **Tareas de Difusión:** Si ves una tarea general (ej. Limpieza general), es porque se ha mandado a todos tus compañeros a la vez. ¡Sube tu foto para completarla!
                 """)
 
             with st.expander("❓ 5. FAQs y 💬 6. Chat"):
                 st.write("""
                 * **FAQs:** Respuestas rápidas a dudas comunes.
-                * **Chat:** Si tienes un problema personal, escribe por aquí. Si ves un **punto rojo 🔴**, te han contestado.
+                * **Chat:** Chat privado con administración. El punto rojo 🔴 significa nueva respuesta.
                 """)
                 
             with st.expander("🏆 7. Quiz Mensual y Concurso"):
@@ -669,7 +729,7 @@ try:
                 * Cada mes se seleccionarán automáticamente **20 preguntas distintas** de los manuales.
                 * Si eres de Sala verás preguntas de atención al cliente. Si eres de Cocina verás preguntas de tu área.
                 * Solo tienes **un intento por mes**. ¡Asegúrate de leer bien antes de enviar!
-                * Al finalizar, entrarás en el **Ranking Público**. Si empatas a puntos con otro compañero, ganará el que haya hecho el examen primero.
+                * Al finalizar, entrarás en el **Ranking Público**. Si empatas a puntos, gana el que haya hecho el examen primero.
                 """)
 
 except Exception as e:
