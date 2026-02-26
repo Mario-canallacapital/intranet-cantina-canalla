@@ -1,6 +1,6 @@
-# --- VERSIÓN v35.4 (DRIVE FIX) ---
-# Actualizado: 24/02/2026 
-# Solución Definitiva: Carga de imágenes de Drive usando enlace directo lh3 sin pasar por el servidor.
+# --- VERSIÓN v37.0 (AUTO-QUIZ GAMIFICATION) ---
+# Actualizado: 26/02/2026 
+# Novedades: Selección automática mensual de 20 preguntas desde un banco de 60 por puesto.
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -26,6 +26,157 @@ st.set_page_config(page_title="Intranet Cantina Canalla", layout="wide", page_ic
 EMAIL_GENERICO = "avisosapp.cantinacanalla@gmail.com" 
 PASS_GENERICA = "pvyglchitjtupzoz" 
 
+# --- LÓGICA AUTOMÁTICA DEL MES ---
+meses_espanol = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+hoy = datetime.now()
+MES_ACTUAL_QUIZ = f"{meses_espanol[hoy.month - 1]} {hoy.year}"
+
+# --- GRAN BANCO DE PREGUNTAS: SALA (60 Preguntas) ---
+POOL_SALA = {
+    "1. ¿De qué color debe ser el calzado de trabajo en Sala?": (["Blanco o negro completo", "Marrón o gris", "Libre elección mientras sea cerrado"], 0),
+    "2. ¿Se puede circular por el local con ropa de calle?": (["Sí, siempre", "No, excepto en el trayecto al vestuario", "Solo si no hay clientes"], 1),
+    "3. ¿Está permitido salir a la calle con la ropa de trabajo?": (["Sí, a zonas cercanas", "No, en ningún caso", "Solo en descansos"], 1),
+    "4. ¿Cómo deben mantenerse las taquillas personales?": (["En perfecto estado de higiene y sin acumular ropa sucia", "Se pueden compartir", "Pueden tener ropa sucia temporalmente"], 0),
+    "5. ¿Cómo se debe lavar la indumentaria de trabajo?": (["Con agua fría", "Con agua caliente asegurando higienización", "A mano siempre"], 1),
+    "6. ¿Qué indica la norma sobre la barba y el pelo corporal?": (["Prohibida barba larga o pelo corporal que ocasione mala imagen", "Se permite cualquier estilo", "Solo se permite perilla"], 0),
+    "7. ¿Cómo deben llevarse las uñas durante el servicio?": (["Largas y pintadas", "Cortas, sin lacas o barniz y limpias", "Solo con esmalte transparente"], 1),
+    "8. ¿Está permitido el uso excesivo de joyas?": (["Sí, no hay problema", "No, si interfieren con el servicio", "Solo pulseras"], 1),
+    "9. Sobre el uso de perfumes en sala, la norma dice:": (["Hay que usar perfumes fuertes", "Evitar perfumes fuertes que molesten a clientes", "No está regulado"], 1),
+    "10. ¿A qué distancia mínima del local se puede fumar?": (["10 metros", "30 metros", "50 metros"], 1),
+    "11. Es obligatorio lavarse las manos frecuentemente, especialmente...": (["Solo al entrar", "Solo tras ir al baño", "Tras usar el aseo, fumar, comer o tocarse la nariz"], 2),
+    "12. ¿Cuál es la norma sobre el uso de motes o apelativos entre compañeros?": (["Están prohibidos, se usa el nombre", "Se permiten si hay confianza", "Solo en descansos"], 0),
+    "13. Discriminar a alguien por raza, sexo o religión es...": (["Motivo de denuncia personándose la empresa como acusación", "Falta leve", "Una advertencia verbal"], 0),
+    "14. Si un compañero incumple una norma, ¿qué se debe hacer?": (["Ignorarlo", "Ponerlo en conocimiento del superior para no ser cómplice", "Reírle la gracia"], 1),
+    "15. ¿Dónde debe guardarse el teléfono móvil personal?": (["En el bolsillo del delantal", "En las taquillas, prohibido en horario laboral", "En la barra"], 1),
+    "16. ¿Qué marca la hora de entrada al trabajo?": (["Cruzar la puerta del local", "Estar uniformado y preparado en el puesto", "Fichar en el sistema"], 1),
+    "17. ¿Computa el tiempo de cambio de uniforme como horario laboral?": (["Sí, siempre", "No se computa", "Solo la salida"], 1),
+    "18. ¿Por qué es obligatorio conocer el menú y sus ingredientes?": (["Para evitar alergias únicamente", "Para brindar mejor atención, información y sugerencias", "No es obligatorio"], 1),
+    "19. Si hay vasos o botellas vacías en la mesa, ¿qué se debe hacer?": (["Esperar a que el cliente avise", "Nunca tenerlos vacíos, retirarlos y ofrecer bebida", "Retirarlos al final de la cena"], 1),
+    "20. Al llevar un plato a la mesa es obligatorio...": (["Dejarlo en silencio", "Anunciarlo y decir sus características generales", "Preguntar quién lo pidió"], 1),
+    "21. En la recepción de clientes, ¿qué es lo primero que se pregunta tras saludar?": (["¿Tienen reserva?", "¿Van a comer o cenar?", "¿Quieren terraza?"], 0),
+    "22. En el procedimiento del aperitivo, si toman alcohol se les ofrece...": (["Chupito de tequila", "Margarita Frozen", "Cerveza"], 1),
+    "23. El aperitivo sin alcohol consiste en una mezcla tipo San Francisco con...": (["Zumo de piña y melocotón", "Naranja, limón y granadina", "Agua con gas"], 1),
+    "24. ¿Qué botón se usa en el TPV para registrar el aperitivo y a qué precio?": (["Chupito Aperitivo, 0€", "Invitación, 0€", "Margarita Mini, 1€"], 0),
+    "25. Al retirar los segundos platos, ¿qué se debe ofrecer?": (["La cuenta", "Postres caseros, margaritas o tequila", "Cafés únicamente"], 1),
+    "26. ¿Qué se entrega al cliente junto a la cuenta para que deje una valoración?": (["Una tarjeta", "El totem", "El datáfono"], 1),
+    "27. Al salir el cliente del local, ¿qué procedimiento se sigue?": (["Decir adiós desde la barra", "Acompañarlos a la puerta y abrirla", "Ignorar la salida"], 1),
+    "28. En la apertura de turno, ¿cuál es el primer paso?": (["Encender cafetera", "Encender el cuadro de luces de barra y sala", "Purgar barriles"], 1),
+    "29. Antes de iniciar el servicio de bebidas en apertura, hay que...": (["Lavar vasos", "Purgar inicialmente los barriles de cerveza", "Cambiar barriles"], 1),
+    "30. En la receta de la Margarita para granizar, ¿cuánto zumo de limón lleva?": (["1 litro", "1,500 litros", "2 litros"], 1),
+    "31. En la receta de la Margarita para granizar, ¿cuánto tequila se añade?": (["1 botella", "2 botellas de 70cl de José Cuervo", "3 botellas"], 1),
+    "32. Si al revisar la sala hay una bombilla fundida, se debe...": (["Dejarla así", "Reponerla", "Avisar al día siguiente"], 1),
+    "33. En el traspaso de turno, se debe comprobar el funcionamiento de...": (["La TPV únicamente", "Máquina de café, hielo y grifo de cerveza", "Las luces de la calle"], 1),
+    "34. Durante el traspaso, ¿qué comunicación debe existir con el siguiente compañero?": (["Ninguna", "Comunicar temas y puntos relevantes del día", "Solo la caja"], 1),
+    "35. En el cierre de turno, ¿qué se debe hacer con las plataformas de delivery?": (["Dejarlas encendidas", "Asegurarse de que quedan apagadas", "Reiniciarlas"], 1),
+    "36. Es obligatorio realizar los ___ proporcionados por la empresa para controlar tareas.": (["Tickets de caja", "Checklist operativos", "Inventarios diarios"], 1),
+    "37. ¿A qué temperatura se recepcionan los productos refrigerados?": (["0-6 ºC", "2-8 ºC", "-2 a 4 ºC"], 0),
+    "38. ¿Cómo se mide la temperatura en la recepción de mercancías?": (["Con láser", "Colocando el termómetro entre dos envases", "A ojo"], 1),
+    "39. El almacenamiento de materias primas sigue el sistema...": (["LIFO", "Alfabético", "FIFO (lo más antiguo primero)"], 2),
+    "40. ¿Sobre qué elementos se deben almacenar los productos para aislarlos del suelo?": (["Cajas de cartón", "Pallets o estanterías", "Mantas"], 1),
+    "41. La temperatura de las cámaras de refrigeración debe ser inferior a...": (["4 ºC", "8 ºC", "0 ºC"], 0),
+    "42. La temperatura de las cámaras de congelación debe estar en torno a...": (["-10 ºC", "-18 ºC", "-24 ºC"], 1),
+    "43. El tiempo correcto de descongelación en cámara de refrigeración es...": (["12-24 horas", "24-48 horas", "48-72 horas"], 1),
+    "44. Para descongelar en microondas se debe hacer...": (["De una vez a máxima potencia", "En 2 o 3 fases, y consumir o cocinar inmediatamente", "Con la función grill"], 1),
+    "45. Si se descongela bajo inmersión en agua fría, el alimento debe...": (["Estar en un envoltorio o bolsa estanca", "Estar en contacto directo con el agua", "Hervirse antes"], 0),
+    "46. ¿Se puede recongelar un producto descongelado?": (["Sí, si no huele mal", "Bajo ningún concepto", "Solo si es carne"], 1),
+    "47. Para desinfectar hortalizas de consumo en crudo se utiliza...": (["Jabón", "Vinagre", "Lejía de uso alimentario"], 2),
+    "48. Si una lata de conserva tiene el fondo convexo (hacia fuera), se debe...": (["Desechar de inmediato", "Hervir", "Abrir con cuidado"], 0),
+    "49. Si el envase original abierto no es adecuado, el producto se trasvasa a...": (["Plástico o acero inoxidable con tapa", "Cristal", "Cartón"], 0),
+    "50. La caducidad secundaria máxima de los fiambres es de...": (["3 días", "5 días", "7 días"], 1),
+    "51. La caducidad secundaria máxima de los embutidos curados es de...": (["5 días", "10 días", "15 días"], 2),
+    "52. Los productos frescos que congelamos caducan al...": (["Mes desde su congelación", "3 meses", "1 semana"], 0),
+    "53. Los productos de limpieza se deben almacenar...": (["En el suelo", "En su armario correspondiente, nunca en el suelo", "En las cámaras frías"], 1),
+    "54. Es obligatorio que todos los cubos de basura tengan...": (["Bolsa doble", "Tapa y pedal", "Ruedas"], 1),
+    "55. ¿Cómo deben almacenarse las tazas, jarras y vasos limpios?": (["Boca arriba", "Apilados de 3 en 3", "Boca abajo"], 2),
+    "56. ¿Cómo deben guardarse los biberones no utilizados?": (["Abiertos", "Con su tapón o film de plástico", "Volcados"], 1),
+    "57. ¿A partir de qué peso se considera manipulación manual de cargas?": (["1 Kg", "3 Kg", "5 Kg"], 1),
+    "58. Al transportar una bandeja, el peso debe apoyarse en...": (["La muñeca", "Los dedos", "La mano y el antebrazo"], 2),
+    "59. Al llevar platos, los codos deben estar...": (["Estirados", "Cerca del cuerpo para disminuir tensión", "A la altura de los hombros"], 1),
+    "60. Al manipular cargas bajas (desde el suelo) se deben...": (["Mantener piernas rectas", "Doblar las rodillas en lugar de usar la espalda", "Girar la cadera"], 1)
+}
+
+# --- GRAN BANCO DE PREGUNTAS: COCINA (60 Preguntas) ---
+POOL_COCINA = {
+    "1. La indumentaria obligatoria de cocina consta de camiseta/casaca de color...": (["Blanca", "Negra", "Gris"], 1),
+    "2. En cocina, ¿qué tipo de guantes son obligatorios?": (["Látex", "Vinilo", "Nitrilo"], 2),
+    "3. ¿Se puede circular por las instalaciones con la ropa de calle?": (["Sí", "Solo hasta el vestuario", "Solo fuera de servicio"], 1),
+    "4. ¿Cómo deben lavarse los uniformes para asegurar su higienización?": (["Con agua fría", "Con agua caliente", "Solo limpieza en seco"], 1),
+    "5. Las uñas en cocina deben estar...": (["Largas y limpias", "Cortas, limpias y sin laca", "Pintadas de transparente"], 1),
+    "6. La distancia mínima permitida para fumar respecto al local es de...": (["10 metros", "20 metros", "30 metros"], 2),
+    "7. ¿Cuándo es obligatorio lavarse las manos en cocina?": (["Solo al entrar", "Antes del servicio, tras ir al aseo, comer, fumar o tocar residuos", "Al final del turno"], 1),
+    "8. El trato vejatorio u ofensivo a un compañero es...": (["Prohibido bajo cualquier justificación", "Falta leve", "Tolerado en estrés"], 0),
+    "9. ¿Dónde debe permanecer el teléfono móvil durante el horario laboral?": (["En la mesa de trabajo", "En las taquillas (prohibido su uso)", "En el bolsillo"], 1),
+    "10. La hora de salida se establece estando...": (["Ya vestido de calle", "Trabajando uniformado hasta la hora exacta estipulada", "Al limpiar la plancha"], 1),
+    "11. ¿Computa el tiempo de cambio de uniforme como horario laboral?": (["Sí", "No", "Depende del turno"], 1),
+    "12. Una competencia primordial en cocina es aplicar las normas para prevenir...": (["Accidentes por corte", "La contaminación cruzada", "Quemaduras graves"], 1),
+    "13. Es vital entender las fichas técnicas de los platos, que son...": (["Los horarios", "Las recetas", "Los manuales de limpieza"], 1),
+    "14. Tareas de apertura: ¿Cuáles son las tres primeras cosas en encenderse?": (["Gas, Campana, Baño María", "Plancha, Freidora, Microondas", "Fogones, Lavavajillas, Luces"], 0),
+    "15. En apertura, ¿cuánto arroz suele prepararse?": (["500 g", "1 Kg", "2 Kg"], 1),
+    "16. ¿Qué ingredientes se deben reponer en la vitrina fría?": (["Solo salsas", "Lechuga y tomate", "Guacamole, pico, cebolla morada, queso, jalapeño, mix de verduras"], 2),
+    "17. ¿Cuántas bolsas de sopa se preparan para el menú de lunes a viernes en planchas?": (["1-2 bolsas", "3-4 bolsas", "5-6 bolsas"], 1),
+    "18. En apertura, ¿cuántos paquetes de tortillas de 13 se preparan?": (["5", "10", "16 paquetes (Nevera de plancha)"], 2),
+    "19. En apertura, ¿cuántas cajas de nachos deben prepararse en zona fría?": (["1 caja", "2 cajas", "4 cajas"], 2),
+    "20. En reservas de cámara, siempre debe haber descongelando X kilos de ternera...": (["2 Kg", "4 Kg", "6 Kg"], 1),
+    "21. En reservas de cámara, ¿cuántos bloques de bacon debe haber descongelando?": (["1 bloque", "2 bloques", "3 bloques"], 2),
+    "22. En reservas, debe haber un túper preparado y picado de...": (["Tomate y lechuga", "Piña, bacón y carnitas", "Cebolla y cilantro"], 1),
+    "23. En el turno de guardia, lo primero en apagarse es...": (["El gas y los fogones", "El baño maría, plancha y fogones", "La freidora"], 1),
+    "24. En el turno de guardia se repone el arroz con la cantidad de...": (["500 g", "1 Kg", "2 Kg"], 1),
+    "25. En el cierre, ¿qué se hace con los biberones utilizados?": (["Se tiran", "Se quitan tapas, se lavan y se vuelven a tapar", "Se guardan abiertos"], 1),
+    "26. En el cierre de cocina, ¿cada cuántos días se cambia el agua del baño maría?": (["Diario", "Cada dos días", "Semanal"], 1),
+    "27. ¿Con qué frecuencia se realiza la limpieza de la campana en el cierre?": (["Diaria", "De manera semanal", "Mensual"], 1),
+    "28. Los vehículos de proveedores refrigerados deben transportar la mercancía a...": (["-2 a 2 ºC", "0 a 6 ºC", "4 a 10 ºC"], 1),
+    "29. Al descargar materias primas para evitar la rotura de cadena de frío se debe...": (["Esperar a finalizar el servicio", "Trasladarlas inmediatamente a sus cámaras", "Dejarlas en el suelo"], 1),
+    "30. En recepción de mercancía, el termómetro para la medición se coloca...": (["Dentro del producto siempre", "Entre dos envases", "Sobre la caja"], 1),
+    "31. El almacenamiento de materias primas usa el sistema FIFO, que significa...": (["First in, first out (lo más antiguo se usa primero)", "Ordenar por alfabeto", "Ordenar por proveedor"], 0),
+    "32. ¿Sobre qué elemento NO se pueden almacenar productos?": (["Estanterías", "Directamente sobre el suelo", "Pallets"], 1),
+    "33. La temperatura de las cámaras de refrigeración debe ser inferior a...": (["0 ºC", "4 ºC", "8 ºC"], 1),
+    "34. La temperatura de las cámaras de congelación debe ser entorno a...": (["-10 ºC", "-18 ºC", "-24 ºC"], 1),
+    "35. El tiempo correcto de descongelación en cámara de refrigeración es...": (["12-24 horas", "24-48 horas", "48-72 horas"], 1),
+    "36. Descongelación en microondas: se debe hacer en fases y después...": (["Consumir o cocinar inmediatamente", "Volver a guardar en nevera", "Dejar reposar 1h"], 0),
+    "37. Para la descongelación por inmersión (chorro de agua fría), el producto debe...": (["Estar en contacto con el agua", "Tener un envoltorio o bolsa de plástico estanca", "Ser carne cruda"], 1),
+    "38. ¿Qué práctica de descongelación está totalmente prohibida?": (["En microondas", "A temperatura ambiente o inmersión en agua caliente", "En cámara a 4ºC"], 1),
+    "39. Para desinfectar frutas y hortalizas de consumo en crudo se utiliza...": (["Agua caliente", "Vinagre", "Lejía de uso alimentario"], 2),
+    "40. Si el fondo de una lata de conserva tiene forma convexa (hacia fuera)...": (["Se desecha", "Se perfora para sacar el aire", "Se usa primero"], 0),
+    "41. Si el recipiente original no es válido tras abrirlo, se trasvasa a...": (["Caja de cartón", "Material apto plástico o acero inoxidable con tapa", "Cristal"], 1),
+    "42. La caducidad secundaria de fiambres es máximo...": (["3 días", "5 días", "7 días"], 1),
+    "43. La caducidad secundaria de embutidos curados es máximo...": (["10 días", "15 días", "20 días"], 1),
+    "44. Para las materias primas que congelamos nosotros, la caducidad máxima es de...": (["1 semana", "1 mes", "3 meses"], 1),
+    "45. Los utensilios y productos de limpieza deben almacenarse...": (["Bajo la pica sin importar si tocan suelo", "En su armario, nunca en el suelo", "Junto a basuras"], 1),
+    "46. ¿Se pueden mantener tuppers sin tapa temporalmente en cocina?": (["Sí", "No, está prohibido proteger mal el interior", "Solo en servicio"], 1),
+    "47. Los cubos de basura deben tener obligatoriamente...": (["Doble bolsa", "Tapa y pedal", "Ruedas"], 1),
+    "48. Todo el material fresco cortado o abierto tiene que estar tapado e identificado con...": (["Nombre del cocinero", "Fecha de apertura/tratamiento y fecha de caducidad", "Alérgenos"], 1),
+    "49. Si se detecta que una temperatura de nevera no está en rango, es obligatorio...": (["Abrir incidencia y avisar a superiores", "Apagarla", "Tirar la comida"], 0),
+    "50. Los palos de fregona y escobas en cocina deben estar...": (["Apoyados en la pared", "Colgados de forma correcta con colgadores", "Tumbados"], 1),
+    "51. ¿Qué se debe hacer si detectamos bandejas de madera astilladas o quemadas?": (["Usarlas igual", "Avisar a los supervisores porque está prohibido", "Forrarlas con film"], 1),
+    "52. Almacenar productos alimenticios sobre neveras o congeladores está...": (["Permitido por espacio", "Totalmente prohibido", "Solo permitido al cierre"], 1),
+    "53. Cualquier carga transportada o empujada en cocina se considera manipulación manual a partir de...": (["1 Kg", "3 Kg", "5 Kg"], 1),
+    "54. Las principales consecuencias de una mala manipulación manual de cargas en cocina son...": (["Cortes", "Lumbalgias", "Quemaduras"], 1),
+    "55. El manejo de cargas superior a ___ Kg entraña riesgo y debe pedirse ayuda.": (["15 Kg", "20 Kg", "25 Kg"], 2),
+    "56. Se aconseja colocar las ollas de mayor peso en...": (["Fogones lejanos", "Los fogones más cercanos al trabajador para evitar alcances", "El suelo"], 1),
+    "57. En los estantes medios (altura caderas/pecho) del almacén se deben colocar...": (["Alimentos pesados de uso frecuente", "Alimentos ligeros", "Alimentos pesados infrecuentes"], 0),
+    "58. En los estantes de menor altura (suelo) del almacén se deben colocar...": (["Lo más usado", "Alimentos pesados de uso infrecuente", "Latas ligeras"], 1),
+    "59. Acumular más de tres faltas injustificadas de puntualidad en un mes es...": (["Falta leve", "Falta grave", "Falta muy grave"], 1),
+    "60. Faltar uno o dos días al trabajo en treinta días sin justificación es...": (["Falta leve", "Falta grave", "Falta muy grave"], 1)
+}
+
+# --- GENERADOR AUTOMÁTICO DE PREGUNTAS DEL MES ---
+random.seed(MES_ACTUAL_QUIZ)
+
+if len(POOL_SALA) >= 20:
+    preguntas_sala_keys = random.sample(list(POOL_SALA.keys()), 20)
+    QUIZ_SALA = {k: POOL_SALA[k] for k in preguntas_sala_keys}
+else:
+    QUIZ_SALA = POOL_SALA
+
+if len(POOL_COCINA) >= 20:
+    preguntas_cocina_keys = random.sample(list(POOL_COCINA.keys()), 20)
+    QUIZ_COCINA = {k: POOL_COCINA[k] for k in preguntas_cocina_keys}
+else:
+    QUIZ_COCINA = POOL_COCINA
+
+# Reseteamos la semilla a la normalidad para el resto de la app
+random.seed()
+
 def enviar_aviso_email(destinatario, asunto, cuerpo):
     try:
         msg = MIMEMultipart()
@@ -45,7 +196,7 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v35.4 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v37.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
 # --- BLOQUE DE SEGURIDAD ---
@@ -56,7 +207,6 @@ try:
         .stApp { background-color: #000000 !important; color: #ffffff !important; }
         [data-testid="stSidebar"] { background-color: #050505 !important; border-right: 1px solid #333; }
         
-        /* FIX MÓVIL: Forzar cabecera y botón de menú a ser visibles */
         header[data-testid="stHeader"] { background-color: #000000 !important; }
         [data-testid="collapsedControl"] { color: #ffffff !important; background-color: #1a1a1a !important; border-radius: 8px; margin: 10px; }
         [data-testid="collapsedControl"] svg { fill: #ffffff !important; color: #ffffff !important; }
@@ -73,6 +223,11 @@ try:
         .stExpander { background-color: #121212 !important; border: 1px solid #333 !important; }
         .status-expired { color: #ff4b4b !important; font-weight: bold; }
         .status-ok { color: #00ff00 !important; }
+        
+        .rank-card { background-color: #1a1a1a; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #8a3ab9; display: flex; justify-content: space-between; align-items: center;}
+        .rank-pos { font-size: 24px; font-weight: bold; color: #8a3ab9; width: 40px;}
+        .rank-name { font-size: 18px; font-weight: bold; flex-grow: 1; }
+        .rank-score { font-size: 20px; font-weight: bold; color: #00ff00; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -102,12 +257,9 @@ try:
         match = re.search(r'[-\w]{25,}', url)
         return match.group(0) if match else None
 
-    # --- NUEVO MOTOR DE IMÁGENES v35.4 (ENLACE DIRECTO) ---
     def procesar_img_drive(url):
         fid = extraer_id_drive(url)
         if not fid: return None
-        # En lugar de descargar la foto con código, pasamos un enlace especial de Google
-        # que Streamlit mostrará directamente sin bloqueos de seguridad.
         return f"https://lh3.googleusercontent.com/d/{fid}"
 
     # --- CONEXIÓN ---
@@ -233,7 +385,7 @@ try:
                     if not ha.empty and pd.to_datetime(ha['Fecha_Hora'], format="%Y-%m-%d %H:%M:%S", errors='coerce').max() > lc: dot = " 🔴"
             except: pass
 
-            menu = st.radio("NAVEGACIÓN", ["📱 Tablón de Novedades", "📄 Mis Documentos", "📚 Manuales", "✅ Tareas", "❓ FAQs", f"💬 Chat{dot}", "ℹ️ Guía de Uso"])
+            menu = st.radio("NAVEGACIÓN", ["📱 Tablón de Novedades", "📄 Mis Documentos", "📚 Manuales", "✅ Tareas", "❓ FAQs", f"💬 Chat{dot}", "🏆 Quiz Mensual", "ℹ️ Guía de Uso"])
             
             st.write("")
             if st.button("Salir"):
@@ -248,11 +400,7 @@ try:
                 autor = str(r.get('Nombre_Apellidos')) if not pd.isna(r.get('Nombre_Apellidos')) else "Admin"
                 sede = str(r.get('Sede_Destino')) if not pd.isna(r.get('Sede_Destino')) else "Todas"
                 st.markdown(f'<div class="insta-card"><div class="insta-header">📍 {sede} • {autor}</div>', unsafe_allow_html=True)
-                
-                if img_url: 
-                    # Mostramos la imagen directamente desde la URL de Google
-                    st.image(img_url, use_container_width=True)
-                    
+                if img_url: st.image(img_url, use_container_width=True)
                 st.markdown(f'<div class="insta-footer"><b>{r.get("Titulo")}</b>: {r.get("Contenido")}<div class="insta-date">{r.get("Fecha_Publicacion")}</div></div></div>', unsafe_allow_html=True)
 
         elif "Tareas" in menu:
@@ -287,7 +435,6 @@ try:
                 with t_tab:
                     f = df_t[df_t['Estado'] == est_v]
                     if not is_admin: f = f[(f['Asignado_A'] == u['Email']) | (f['Creado_Por'] == u['Nombre_Apellidos'])]
-                    
                     for idx, r in f.iterrows():
                         status_icon, limite_str = "🔵", ""
                         if r.get('Fecha_Limite'):
@@ -391,6 +538,88 @@ try:
                     for _, r in sub.iterrows():
                         with st.expander(r['Pregunta']): st.write(r['Respuesta'])
 
+        # --- SECCIÓN: QUIZ MENSUAL AUTO ---
+        elif "Quiz" in menu:
+            st.title(f"🏆 Quiz Mensual: {MES_ACTUAL_QUIZ}")
+            st.write("Pon a prueba tus conocimientos sobre los Protocolos y Normas. Tienes **1 solo intento**. Las preguntas cambiarán automáticamente el mes que viene. ¡Compite por el primer puesto en el ranking!")
+            st.divider()
+
+            try:
+                df_ranking = load("Ranking_Quiz", 0)
+            except Exception:
+                df_ranking = pd.DataFrame(columns=["Mes", "Email", "Nombre", "Rol", "Puntuacion", "Fecha"])
+                if is_admin:
+                    st.error("⚠️ AVISO PARA ADMIN: No se ha encontrado la pestaña 'Ranking_Quiz' en el Excel.")
+                else:
+                    st.warning("El sistema de ranking se está configurando. Vuelve más tarde.")
+                st.stop()
+
+            ha_participado = not df_ranking[(df_ranking['Email'] == u['Email']) & (df_ranking['Mes'] == MES_ACTUAL_QUIZ)].empty
+
+            if ha_participado:
+                st.success("✅ Ya has participado en el Quiz de este mes. ¡Gracias!")
+                mi_nota = df_ranking[(df_ranking['Email'] == u['Email']) & (df_ranking['Mes'] == MES_ACTUAL_QUIZ)]['Puntuacion'].values[0]
+                st.metric("Tu Puntuación", f"{mi_nota} / 20")
+                st.divider()
+                st.subheader("📊 Ranking General del Mes")
+                
+                df_mes = df_ranking[df_ranking['Mes'] == MES_ACTUAL_QUIZ].copy()
+                df_mes['Puntuacion'] = pd.to_numeric(df_mes['Puntuacion'])
+                df_ordenado = df_mes.sort_values(by=['Puntuacion', 'Fecha'], ascending=[False, True]).reset_index(drop=True)
+                
+                for index, row in df_ordenado.iterrows():
+                    pos = index + 1
+                    medalla = "🥇" if pos == 1 else "🥈" if pos == 2 else "🥉" if pos == 3 else f"{pos}º"
+                    st.markdown(f"""
+                    <div class="rank-card">
+                        <div class="rank-pos">{medalla}</div>
+                        <div class="rank-name">{row['Nombre']} <span style="font-size:12px; color:gray;">({row['Rol']})</span></div>
+                        <div class="rank-score">{row['Puntuacion']} pts</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            else:
+                diccionario_preguntas = QUIZ_COCINA if "Cocine" in rol_activo else QUIZ_SALA
+                tipo_examen = "Cocina" if "Cocine" in rol_activo else "Sala"
+                
+                st.info(f"Vas a realizar el examen correspondiente al área de: **{tipo_examen}**.")
+                
+                with st.form("quiz_form"):
+                    respuestas_usuario = {}
+                    for i, (pregunta, (opciones, correcta_idx)) in enumerate(diccionario_preguntas.items()):
+                        # Extraemos el número original si lo tiene, para dejarlo limpio y enumerar de 1 a 20
+                        pregunta_limpia = re.sub(r'^\d+\.\s*', '', pregunta)
+                        st.markdown(f"**{i+1}. {pregunta_limpia}**")
+                        respuestas_usuario[i] = st.radio("Opciones", opciones, key=f"q_{i}", index=None, label_visibility="collapsed")
+                        st.write("")
+                    
+                    if st.form_submit_button("Enviar Mis Respuestas", type="primary", use_container_width=True):
+                        if None in respuestas_usuario.values():
+                            st.error("⛔ Debes responder a todas las preguntas antes de enviar el examen.")
+                        else:
+                            puntuacion = 0
+                            for i, (pregunta, (opciones, correcta_idx)) in enumerate(diccionario_preguntas.items()):
+                                si_acerto = respuestas_usuario[i] == opciones[correcta_idx]
+                                if si_acerto:
+                                    puntuacion += 1
+                            
+                            nuevo_registro = pd.DataFrame([{
+                                "Mes": MES_ACTUAL_QUIZ,
+                                "Email": u['Email'],
+                                "Nombre": u['Nombre_Apellidos'],
+                                "Rol": rol_activo,
+                                "Puntuacion": puntuacion,
+                                "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            }])
+                            
+                            try:
+                                conn.update(worksheet="Ranking_Quiz", data=pd.concat([df_ranking, nuevo_registro], ignore_index=True))
+                                st.success("¡Examen enviado correctamente!")
+                                time.sleep(1)
+                                st.rerun()
+                            except Exception as e:
+                                st.error("Hubo un problema al guardar tu nota. Avisa a administración.")
+
         elif "Guía de Uso" in menu:
             st.title("ℹ️ Manual de Usuario - Intranet Cantina")
             st.markdown("### ¡Bienvenido/a al equipo! 🍴")
@@ -432,6 +661,15 @@ try:
                 st.write("""
                 * **FAQs:** Respuestas rápidas a dudas comunes.
                 * **Chat:** Si tienes un problema personal, escribe por aquí. Si ves un **punto rojo 🔴**, te han contestado.
+                """)
+                
+            with st.expander("🏆 7. Quiz Mensual y Concurso"):
+                st.info("Pon a prueba lo que sabes y compite con tus compañeros.")
+                st.write("""
+                * Cada mes se seleccionarán automáticamente **20 preguntas distintas** de los manuales.
+                * Si eres de Sala verás preguntas de atención al cliente. Si eres de Cocina verás preguntas de tu área.
+                * Solo tienes **un intento por mes**. ¡Asegúrate de leer bien antes de enviar!
+                * Al finalizar, entrarás en el **Ranking Público**. Si empatas a puntos con otro compañero, ganará el que haya hecho el examen primero.
                 """)
 
 except Exception as e:
