@@ -1,6 +1,6 @@
-# --- VERSIÓN v39.0 (DATA-DRIVEN EDITION: CAMILLION + DASHBOARD + QUIZ 120) ---
-# Actualizado: 26/02/2026 
-# Novedades: Dashboard Analítico de Tareas, Evidencia Visual, Plantillas y Auto-Quiz.
+# --- VERSIÓN v40.0 (CORPORATE MOBILE EDITION) ---
+# Actualizado: 05/03/2026 
+# Novedades: Interfaz móvil nativa (Bottom Nav), Estilo Web Corporativa (Negro/Oro), Fix botones invisibles.
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -20,7 +20,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Intranet Cantina Canalla", layout="wide", page_icon="🍴")
+st.set_page_config(page_title="Intranet Cantina Canalla", layout="wide", page_icon="🐓")
 
 # --- CONFIGURACIÓN CORREO ---
 EMAIL_GENERICO = "avisosapp.cantinacanalla@gmail.com" 
@@ -31,7 +31,7 @@ meses_espanol = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio",
 hoy = datetime.now()
 MES_ACTUAL_QUIZ = f"{meses_espanol[hoy.month - 1]} {hoy.year}"
 
-# --- GRAN BANCO DE PREGUNTAS: SALA (60 Preguntas) ---
+# --- GRAN BANCO DE PREGUNTAS: SALA ---
 POOL_SALA = {
     "1. ¿De qué color debe ser el calzado de trabajo en Sala?": (["Blanco o negro completo", "Marrón o gris", "Libre elección mientras sea cerrado"], 0),
     "2. ¿Se puede circular por el local con ropa de calle?": (["Sí, siempre", "No, excepto en el trayecto al vestuario", "Solo si no hay clientes"], 1),
@@ -95,7 +95,7 @@ POOL_SALA = {
     "60. Al manipular cargas bajas (desde el suelo) se deben...": (["Mantener piernas rectas", "Doblar las rodillas en lugar de usar la espalda", "Girar la cadera"], 1)
 }
 
-# --- GRAN BANCO DE PREGUNTAS: COCINA (60 Preguntas) ---
+# --- GRAN BANCO DE PREGUNTAS: COCINA ---
 POOL_COCINA = {
     "1. La indumentaria obligatoria de cocina consta de camiseta/casaca de color...": (["Blanca", "Negra", "Gris"], 1),
     "2. En cocina, ¿qué tipo de guantes son obligatorios?": (["Látex", "Vinilo", "Nitrilo"], 2),
@@ -159,21 +159,17 @@ POOL_COCINA = {
     "60. Faltar uno o dos días al trabajo en treinta días sin justificación es...": (["Falta leve", "Falta grave", "Falta muy grave"], 1)
 }
 
-# --- GENERADOR AUTOMÁTICO DE PREGUNTAS DEL MES ---
+# --- GENERADOR AUTOMÁTICO DE PREGUNTAS ---
 random.seed(MES_ACTUAL_QUIZ)
-
 if len(POOL_SALA) >= 20:
-    preguntas_sala_keys = random.sample(list(POOL_SALA.keys()), 20)
-    QUIZ_SALA = {k: POOL_SALA[k] for k in preguntas_sala_keys}
+    QUIZ_SALA = {k: POOL_SALA[k] for k in random.sample(list(POOL_SALA.keys()), 20)}
 else:
     QUIZ_SALA = POOL_SALA
 
 if len(POOL_COCINA) >= 20:
-    preguntas_cocina_keys = random.sample(list(POOL_COCINA.keys()), 20)
-    QUIZ_COCINA = {k: POOL_COCINA[k] for k in preguntas_cocina_keys}
+    QUIZ_COCINA = {k: POOL_COCINA[k] for k in random.sample(list(POOL_COCINA.keys()), 20)}
 else:
     QUIZ_COCINA = POOL_COCINA
-
 random.seed()
 
 # --- FUNCIONES BASE ---
@@ -196,38 +192,115 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v39.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v40.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
-# --- BLOQUE PRINCIPAL ---
+# --- BLOQUE PRINCIPAL DE LA APP ---
 try:
-    # CSS COMBINADO (Dashboard, Camillion, Quiz)
+    # --- 🎨 CSS: ESTILO CORPORATIVO CANTINA CANALLA + FIX BOTONES MÓVIL ---
     st.markdown("""
         <style>
-        .stApp { background-color: #000000 !important; color: #ffffff !important; }
-        [data-testid="stSidebar"] { background-color: #050505 !important; border-right: 1px solid #333; }
-        header[data-testid="stHeader"] { background-color: #000000 !important; }
-        [data-testid="collapsedControl"] { color: #ffffff !important; background-color: #1a1a1a !important; border-radius: 8px; margin: 10px; }
-        [data-testid="collapsedControl"] svg { fill: #ffffff !important; color: #ffffff !important; }
-        .logo-container { display: flex; justify-content: center; padding: 10px 0; flex-direction: column; align-items: center; }
-        .circular-logo { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 2px solid #8a3ab9; margin-bottom: 10px; }
-        .insta-card { background-color: #121212 !important; border-radius: 12px; border: 1px solid #333; margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto; overflow: hidden; }
-        .insta-header { padding: 12px; border-bottom: 1px solid #333; font-weight: 700; color: white !important; }
+        /* 1. Fondo de la App y color de texto general */
+        .stApp { 
+            background-color: #0A0A0A !important; 
+            color: #EDEDED !important; 
+            padding-bottom: 90px !important; /* Espacio para que el menú de abajo no tape nada */
+        }
+        
+        /* 2. Ocultar menús por defecto de Streamlit (Hamburguesa y Footer) */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header[data-testid="stHeader"] {visibility: hidden;}
+        [data-testid="stSidebar"] {display: none !important;}
+        
+        /* 3. Solución de Botones Invisibles y Estilo Dorado Cantina */
+        button[data-testid="stBaseButton-primary"] {
+            background-color: #D4AF37 !important; /* Dorado Cantina */
+            color: #000000 !important;
+            font-weight: 800 !important;
+            border: none !important;
+            border-radius: 8px !important;
+        }
+        button[data-testid="stBaseButton-secondary"] {
+            background-color: #1A1A1A !important;
+            color: #D4AF37 !important; /* Texto Dorado */
+            border: 1px solid #D4AF37 !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+        }
+        /* Cajas de texto e inputs para que se vean bien */
+        div[data-baseweb="input"] > div, div[data-baseweb="textarea"] > div, div[data-baseweb="select"] > div {
+            background-color: #1A1A1A !important;
+            border: 1px solid #333333 !important;
+            border-radius: 8px !important;
+            color: white !important;
+        }
+        
+        /* 4. Estilo de Cajas y Expanders */
+        .insta-card { background-color: #141414 !important; border-radius: 12px; border: 1px solid #333; margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto; overflow: hidden; }
+        .insta-header { padding: 12px; border-bottom: 1px solid #333; font-weight: 700; color: #D4AF37 !important; }
+        .insta-footer { padding: 12px; }
+        .insta-date { font-size: 11px; color: gray; margin-top: 5px;}
+        
         .bubble { padding: 10px 15px; border-radius: 20px; margin-bottom: 10px; max-width: 75%; font-size: 14px; }
-        .bubble-user { background-color: #8a3ab9 !important; color: white !important; margin-left: auto; border-bottom-right-radius: 4px; }
-        .bubble-admin { background-color: #262626 !important; color: white !important; margin-right: auto; border-bottom-left-radius: 4px; }
-        h1, h2, h3, p, span, label, .stMarkdown, .stExpander, .stSubheader { color: #ffffff !important; }
-        .stExpander { background-color: #121212 !important; border: 1px solid #333 !important; }
+        .bubble-user { background-color: #D4AF37 !important; color: black !important; margin-left: auto; border-bottom-right-radius: 4px; font-weight: 500;}
+        .bubble-admin { background-color: #222222 !important; color: white !important; margin-right: auto; border-bottom-left-radius: 4px; }
+        
+        .stExpander { background-color: #141414 !important; border: 1px solid #333 !important; border-radius: 8px !important; }
+        h1, h2, h3, p, span, label, .stMarkdown { color: #EDEDED !important; }
+        
         .status-expired { color: #ff4b4b !important; font-weight: bold; }
         .status-ok { color: #00ff00 !important; }
-        .req-foto { color: #ffb703 !important; font-size: 12px; font-weight: bold; background: #332600; padding: 3px 6px; border-radius: 4px;}
-        .rank-card { background-color: #1a1a1a; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #8a3ab9; display: flex; justify-content: space-between; align-items: center;}
-        .rank-pos { font-size: 24px; font-weight: bold; color: #8a3ab9; width: 40px;}
+        .req-foto { color: #000000 !important; font-size: 11px; font-weight: bold; background: #D4AF37; padding: 4px 8px; border-radius: 6px;}
+        
+        .rank-card { background-color: #141414; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #D4AF37; display: flex; justify-content: space-between; align-items: center;}
+        .rank-pos { font-size: 24px; font-weight: bold; color: #D4AF37; width: 40px;}
         .rank-name { font-size: 18px; font-weight: bold; flex-grow: 1; }
         .rank-score { font-size: 20px; font-weight: bold; color: #00ff00; }
+
+        /* 5. EL TRUCO DEL MENÚ INFERIOR (BOTTOM NAV) */
+        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #0A0A0A;
+            z-index: 99999;
+            border-top: 1px solid #222222;
+            padding: 10px 5px 25px 5px; /* Espacio extra abajo para los iPhone */
+            box-shadow: 0px -4px 10px rgba(0,0,0,0.6);
+        }
+        /* Convertir los botones de ese bloque en iconos */
+        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) button {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #888888 !important;
+            padding: 0 !important;
+            height: auto !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        /* Efecto al pulsar/hover en el menu */
+        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) button:hover,
+        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) button:active {
+            color: #D4AF37 !important;
+        }
+        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) p {
+            font-size: 11px !important;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+        /* Eliminar espacio entre columnas del nav */
+        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) > div > div {
+            gap: 0 !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
+    # --- FUNCIONES ---
     def cargar_logo_base64():
         try:
             with open("armband-PhotoRoom.png-PhotoRoom.png", "rb") as f:
@@ -258,6 +331,7 @@ try:
         if not fid: return None
         return f"https://lh3.googleusercontent.com/d/{fid}"
 
+    # --- CONEXIÓN A GOOGLE SHEETS ---
     conn = st.connection("gsheets", type=GSheetsConnection)
     def load(p, ttl=5):
         for i in range(3):
@@ -266,29 +340,42 @@ try:
                 if i == 2: raise e
                 time.sleep(2)
 
+    # --- VARIABLES DE SESIÓN ---
     if 'auth' not in st.session_state: st.session_state.auth = False
     if 'page' not in st.session_state: st.session_state.page = "login"
+    if 'app_section' not in st.session_state: st.session_state.app_section = "Inicio"
 
-    # --- LOGIN ---
+    # ==========================================
+    # PANTALLA 1: LOGIN
+    # ==========================================
     if not st.session_state.auth:
+        st.write("") # Espaciador superior
+        st.write("")
         col1, col2, col3 = st.columns([1,1.5,1])
         with col2:
             logo = cargar_logo_base64()
             st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-            if logo: st.markdown(f'<img src="data:image/png;base64,{logo}" class="circular-logo">', unsafe_allow_html=True)
-            st.markdown('<h2 style="text-align: center;">Intranet Cantina Canalla</h2></div>', unsafe_allow_html=True)
+            if logo: st.markdown(f'<img src="data:image/png;base64,{logo}" class="circular-logo" style="border-color: #D4AF37;">', unsafe_allow_html=True)
+            st.markdown('<h2 style="text-align: center; color: #D4AF37 !important;">Intranet Cantina Canalla</h2></div>', unsafe_allow_html=True)
             
             if st.session_state.page == "login":
                 with st.form("login_form"):
-                    e, n, p = st.text_input("Email"), st.text_input("NIF"), st.text_input("Contraseña", type="password")
-                    if st.form_submit_button("Entrar", use_container_width=True):
+                    e = st.text_input("Email")
+                    n = st.text_input("NIF")
+                    p = st.text_input("Contraseña", type="password")
+                    if st.form_submit_button("Entrar", type="primary", use_container_width=True):
                         df_u = load("Usuarios", 0)
                         v = df_u[(df_u['Email'].str.strip() == e.strip()) & (df_u['NIF_NIE'].astype(str).str.strip() == n.strip()) & (df_u['Contraseña'].astype(str).str.strip() == p.strip())]
                         if not v.empty:
                             ud = v.iloc[0].to_dict()
-                            if str(ud.get('Estado')).strip().capitalize() != "Activo": st.error("⛔ Usuario Inactivo.")
+                            if str(ud.get('Estado')).strip().capitalize() != "Activo": 
+                                st.error("⛔ Usuario Inactivo.")
                             else:
-                                st.session_state.user = ud; st.session_state.auth = True
+                                st.session_state.user = ud
+                                st.session_state.auth = True
+                                # Por defecto el rol activo es el primero de su lista
+                                roles_list = [r.strip() for r in str(ud.get('Roles', '')).split(',') if r.strip()]
+                                st.session_state.rol_activo = roles_list[0] if roles_list else "Empleado"
                                 st.session_state.page = "change_password" if str(ud.get('Primer_Acceso')).strip().upper() == "SÍ" else "notifications"
                                 st.rerun()
                         else: st.error("❌ Credenciales incorrectas.")
@@ -297,7 +384,7 @@ try:
             elif "forgot" in st.session_state.page:
                 if st.session_state.page == "forgot_step1":
                     em = st.text_input("Tu Email")
-                    if st.button("Enviar Código"):
+                    if st.button("Enviar Código", type="primary", use_container_width=True):
                         df_u = load("Usuarios", 0)
                         if em in df_u['Email'].values:
                             c = str(random.randint(100000, 999999))
@@ -308,41 +395,48 @@ try:
                     if st.button("Volver"): st.session_state.page = "login"; st.rerun()
                 elif st.session_state.page == "forgot_step2":
                     uc = st.text_input("Código")
-                    if st.button("Validar"):
+                    if st.button("Validar", type="primary", use_container_width=True):
                         if uc == st.session_state.recovery_code: st.session_state.page = "forgot_step3"; st.rerun()
                 elif st.session_state.page == "forgot_step3":
                     with st.form("np"):
                         new_p = st.text_input("Nueva pass", type="password")
-                        if st.form_submit_button("Actualizar"):
+                        if st.form_submit_button("Actualizar", type="primary", use_container_width=True):
                             df = load("Usuarios", 0); idx = df[df['Email'] == st.session_state.recovery_email].index[0]
                             df.at[idx, 'Contraseña'] = new_p; conn.update(worksheet="Usuarios", data=df)
                             st.session_state.page = "login"; st.rerun()
 
+    # ==========================================
+    # PANTALLA 2: CAMBIO DE CLAVE
+    # ==========================================
     elif st.session_state.page == "change_password":
-        st.title("🔑 Cambio de Clave Obligatorio")
+        st.title("🔑 Cambio de Clave")
+        st.write("Al ser tu primer acceso, debes poner una contraseña nueva por seguridad.")
         with st.form("cp"):
             p1, p2 = st.text_input("Nueva clave", type="password"), st.text_input("Repite", type="password")
-            if st.form_submit_button("Guardar"):
+            if st.form_submit_button("Guardar", type="primary", use_container_width=True):
                 if p1 == p2 and len(p1) > 4:
                     df = load("Usuarios", 0); idx = df[df['Email'] == st.session_state.user['Email']].index[0]
                     df.at[idx, 'Contraseña'], df.at[idx, 'Primer_Acceso'] = p1, "NO"
                     conn.update(worksheet="Usuarios", data=df)
                     st.session_state.page = "notifications"; st.rerun()
 
+    # ==========================================
+    # PANTALLA 3: NOTIFICACIONES AL ENTRAR
+    # ==========================================
     elif st.session_state.page == "notifications":
-        st.title(f"👋 Hola, {st.session_state.user['Nombre_Apellidos']}")
         u = st.session_state.user
+        st.markdown(f"<h1 style='color: #D4AF37 !important;'>👋 Hola, {u['Nombre_Apellidos']}</h1>", unsafe_allow_html=True)
         try: last_log = pd.to_datetime(u.get('Ultima_Conexion'), format="%Y-%m-%d %H:%M:%S")
         except: last_log = datetime(2000,1,1)
         alertas = []
         df_av = load("Avisos", 30)
         if not df_av.empty:
             fechas_av = pd.to_datetime(df_av['Fecha_Publicacion'], format="%Y-%m-%d %H:%M:%S", errors='coerce')
-            if fechas_av.max() > last_log: alertas.append("📱 Nuevos avisos en el Tablón")
+            if fechas_av.max() > last_log: alertas.append("📱 Hay nuevos avisos en el Tablón de Novedades.")
         if alertas:
-            st.subheader("🔔 Novedades:"); 
+            st.subheader("🔔 Novedades:")
             for a in alertas: st.info(a)
-            if st.button("Entrar"):
+            if st.button("Entrar a la Intranet", type="primary", use_container_width=True):
                 df = load("Usuarios", 0); idx = df[df['Email'] == u['Email']].index[0]
                 df.at[idx, 'Ultima_Conexion'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 conn.update(worksheet="Usuarios", data=df); st.session_state.page = "main"; st.rerun()
@@ -351,37 +445,45 @@ try:
             df.at[idx, 'Ultima_Conexion'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             conn.update(worksheet="Usuarios", data=df); st.session_state.page = "main"; st.rerun()
 
+    # ==========================================
+    # PANTALLA 4: APP PRINCIPAL (NUEVA UI SIN LATERAL)
+    # ==========================================
     elif st.session_state.page == "main":
         u = st.session_state.user
-        roles_disponibles = [r.strip() for r in str(u.get('Roles', '')).split(',') if r.strip()]
-        
-        with st.sidebar:
+        is_admin = st.session_state.rol_activo == "Admin"
+        is_encargado = st.session_state.rol_activo == "Encargado"
+
+        # ---------------------------------------------------------
+        # CABECERA SUPERIOR (TOP BAR)
+        # ---------------------------------------------------------
+        col_logo, col_info = st.columns([1, 4])
+        with col_logo:
             logo_data = cargar_logo_base64()
-            if logo_data: st.markdown(f'<div class="sidebar-logo-container"><img src="data:image/png;base64,{logo_data}" class="circular-logo"></div>', unsafe_allow_html=True)
-            st.subheader(f"{u['Nombre_Apellidos']}")
-            rol_activo = st.selectbox("Rol Activo:", roles_disponibles, index=0)
-            st.caption(f"📍 {u['Sede']}")
-            st.divider()
+            if logo_data: 
+                st.markdown(f'<img src="data:image/png;base64,{logo_data}" style="width:55px; height:55px; border-radius:50%; border: 2px solid #D4AF37; object-fit: cover;">', unsafe_allow_html=True)
+        with col_info:
+            st.markdown(f"<div style='margin-top: 5px; line-height: 1.2;'><strong style='font-size: 18px;'>{u['Nombre_Apellidos']}</strong><br><span style='color:#D4AF37; font-size:14px;'>{st.session_state.rol_activo}</span> <span style='color:gray; font-size:12px;'>📍 {u['Sede']}</span></div>", unsafe_allow_html=True)
+        st.divider()
 
-            is_admin = rol_activo == "Admin"
-            is_encargado = rol_activo == "Encargado"
+        # Check Chat Dot para el menú inferior
+        df_c_check = load("Chat_Directo", 5)
+        hay_mensaje = False
+        try:
+            lc = pd.to_datetime(u.get('Ultima_Conexion'), format="%Y-%m-%d %H:%M:%S")
+            if not is_admin:
+                ha = df_c_check[(df_c_check['Usuario_Email']==u['Email']) & (df_c_check['Autor']=='Admin')]
+                if not ha.empty and pd.to_datetime(ha['Fecha_Hora'], format="%Y-%m-%d %H:%M:%S", errors='coerce').max() > lc: 
+                    hay_mensaje = True
+        except: pass
 
-            df_c_check = load("Chat_Directo", 5)
-            dot = ""
-            try:
-                lc = pd.to_datetime(u.get('Ultima_Conexion'), format="%Y-%m-%d %H:%M:%S")
-                if not is_admin:
-                    ha = df_c_check[(df_c_check['Usuario_Email']==u['Email']) & (df_c_check['Autor']=='Admin')]
-                    if not ha.empty and pd.to_datetime(ha['Fecha_Hora'], format="%Y-%m-%d %H:%M:%S", errors='coerce').max() > lc: dot = " 🔴"
-            except: pass
+        # ---------------------------------------------------------
+        # CONTROLADOR DE VISTAS (ENRUTADOR)
+        # ---------------------------------------------------------
+        vista = st.session_state.app_section
 
-            menu = st.radio("NAVEGACIÓN", ["📱 Tablón de Novedades", "📄 Mis Documentos", "📚 Manuales", "✅ Tareas", "❓ FAQs", f"💬 Chat{dot}", "🏆 Quiz Mensual", "ℹ️ Guía de Uso"])
-            
-            st.write("")
-            if st.button("Salir"): st.session_state.clear(); st.rerun()
-
-        # --- SECCIONES ---
-        if "Tablón" in menu:
+        # VISTA: INICIO (TABLÓN)
+        if vista == "Inicio":
+            st.markdown("<h3 style='color:#D4AF37;'>📱 Tablón de Novedades</h3>", unsafe_allow_html=True)
             df = load("Avisos", 300)
             for _, r in df.sort_values(by=df.columns[0], ascending=False).iterrows():
                 img_url = procesar_img_drive(r.get('Enlace_Imagen'))
@@ -391,112 +493,85 @@ try:
                 if img_url: st.image(img_url, use_container_width=True)
                 st.markdown(f'<div class="insta-footer"><b>{r.get("Titulo")}</b>: {r.get("Contenido")}<div class="insta-date">{r.get("Fecha_Publicacion")}</div></div></div>', unsafe_allow_html=True)
 
-        elif "Tareas" in menu:
-            st.title("✅ Gestión de Tareas")
+        # VISTA: TAREAS
+        elif vista == "Tareas":
+            st.markdown("<h3 style='color:#D4AF37;'>✅ Gestión de Tareas</h3>", unsafe_allow_html=True)
             df_t, df_u, df_com = load("Tareas", 5), load("Usuarios", 300), load("Comentarios_Tareas", 5)
             
-            # --- NUEVA ESTRUCTURA DE PESTAÑAS (Incluye Dashboard) ---
-            tabs_t = st.tabs(["📊 Dashboard Analítico", "⚡ Plantillas Rápidas", "🆕 Pendientes", "🚧 En Proceso", "✅ Completadas"])
+            tabs_t = st.tabs(["📊 Dashboard", "⚡ Plantillas Rápidas", "🆕 Ptes", "🚧 En Proceso", "✅ Fin"])
             
-            # 1. DASHBOARD DE REPORTING
+            # Pestaña 1: DASHBOARD
             with tabs_t[0]:
-                st.subheader("📊 Centro de Control de Operaciones")
-                
-                # Proteger columnas de fechas por si no existen en versiones viejas
                 if 'Fecha_Creacion' not in df_t.columns: df_t['Fecha_Creacion'] = pd.NaT
                 if 'Fecha_Completada' not in df_t.columns: df_t['Fecha_Completada'] = pd.NaT
                 
-                # Filtro de visibilidad: Empleados solo ven lo suyo, Admin ve todo
-                if not is_admin and not is_encargado:
-                    df_dash = df_t[(df_t['Asignado_A'] == u['Email']) | (df_t['Creado_Por'] == u['Nombre_Apellidos'])].copy()
-                else:
-                    df_dash = df_t.copy()
+                if not is_admin and not is_encargado: df_dash = df_t[(df_t['Asignado_A'] == u['Email']) | (df_t['Creado_Por'] == u['Nombre_Apellidos'])].copy()
+                else: df_dash = df_t.copy()
 
-                # Diccionario para convertir Emails en Nombres reales en el dashboard
                 map_email_nombre = dict(zip(df_u['Email'], df_u['Nombre_Apellidos']))
                 df_dash['Nombre_Empleado'] = df_dash['Asignado_A'].map(map_email_nombre).fillna(df_dash['Asignado_A'])
 
-                # --- FILTROS UI ---
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    lista_emps = ["Todos"] + sorted(df_dash['Nombre_Empleado'].dropna().unique().tolist())
-                    filtro_emp = st.selectbox("👤 Empleado Asignado", lista_emps)
-                with col2:
-                    lista_est = df_dash['Estado'].dropna().unique().tolist()
-                    filtro_est = st.multiselect("📌 Estado de la Tarea", lista_est, default=lista_est)
-                with col3:
-                    filtro_creacion = st.date_input("📅 Rango Fecha Creación", value=[], key="d_crea")
-                with col4:
-                    filtro_cierre = st.date_input("🏁 Rango Fecha Cierre", value=[], key="d_cie")
-
-                # --- APLICAR FILTROS ---
-                if filtro_emp != "Todos":
-                    df_dash = df_dash[df_dash['Nombre_Empleado'] == filtro_emp]
-                if filtro_est:
-                    df_dash = df_dash[df_dash['Estado'].isin(filtro_est)]
+                lista_emps = ["Todos"] + sorted(df_dash['Nombre_Empleado'].dropna().unique().tolist())
+                filtro_emp = st.selectbox("👤 Filtrar por Empleado", lista_emps)
+                if filtro_emp != "Todos": df_dash = df_dash[df_dash['Nombre_Empleado'] == filtro_emp]
                 
-                if len(filtro_creacion) == 2:
-                    df_dash['FC_dt'] = pd.to_datetime(df_dash['Fecha_Creacion'], errors='coerce').dt.date
-                    df_dash = df_dash[(df_dash['FC_dt'] >= filtro_creacion[0]) & (df_dash['FC_dt'] <= filtro_creacion[1])]
-                
-                if len(filtro_cierre) == 2:
-                    df_dash['FCi_dt'] = pd.to_datetime(df_dash['Fecha_Completada'], errors='coerce').dt.date
-                    df_dash = df_dash[(df_dash['FCi_dt'] >= filtro_cierre[0]) & (df_dash['FCi_dt'] <= filtro_cierre[1])]
-
-                # --- MÉTRICAS ---
                 st.divider()
-                c1, c2, c3, c4 = st.columns(4)
+                c1, c2, c3 = st.columns(3)
                 tot = len(df_dash)
                 comp = len(df_dash[df_dash['Estado'] == 'Completada'])
-                proc = len(df_dash[df_dash['Estado'] == 'En Proceso'])
                 pend = len(df_dash[df_dash['Estado'] == 'Pendiente'])
                 
-                c1.metric("📋 Total Tareas", tot)
-                c2.metric("✅ Completadas", comp)
-                c3.metric("🚧 En Proceso", proc)
-                c4.metric("🆕 Pendientes", pend)
+                c1.metric("📋 Total", tot)
+                c2.metric("✅ Completas", comp)
+                c3.metric("🆕 Ptes", pend)
 
-                # --- GRÁFICOS ---
                 if tot > 0:
                     st.write("")
-                    col_chart1, col_chart2 = st.columns(2)
-                    with col_chart1:
-                        st.markdown("**Distribución por Estado**")
-                        st.bar_chart(df_dash['Estado'].value_counts(), color="#8a3ab9")
-                    with col_chart2:
-                        if filtro_emp == "Todos":
-                            st.markdown("**Carga de trabajo por Empleado**")
-                            st.bar_chart(df_dash['Nombre_Empleado'].value_counts())
-                        else:
-                            st.markdown("**Progreso del Empleado**")
-                            porcentaje = int((comp / tot) * 100) if tot > 0 else 0
-                            st.progress(porcentaje / 100.0, text=f"Tasa de finalización: {porcentaje}%")
+                    st.markdown("**Distribución por Estado**")
+                    st.bar_chart(df_dash['Estado'].value_counts(), color="#D4AF37")
 
-            # 3. CREACIÓN MANUAL DE TAREAS
-            with tabs_t[2]:
-                with st.expander("➕ Crear Nueva Tarea Personalizada"):
+            # Pestaña 2: PLANTILLAS RÁPIDAS
+            with tabs_t[1]:
+                st.write("Lanza rutinas de equipo al instante.")
+                def lanzar_tarea_masiva(titulo, desc, rol_destino):
+                    usuarios_destino = df_u[df_u['Roles'].str.contains(rol_destino, na=False, case=False) & df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
+                    if usuarios_destino.empty:
+                        st.warning(f"No hay usuarios con el rol {rol_destino} en tu sede.")
+                        return
+                    nuevas_tareas = []
+                    desc_foto = desc + " [REQ_FOTO]"
+                    hoy_str = str(date.today())
+                    for _, empleado in usuarios_destino.iterrows():
+                        nuevas_tareas.append({"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": titulo, "Descripción": desc_foto, "Asignado_A": empleado['Email'], "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": hoy_str, "Fecha_Creacion": hoy_str, "Fecha_Completada": ""})
+                    conn.update(worksheet="Tareas", data=pd.concat([df_t, pd.DataFrame(nuevas_tareas)], ignore_index=True))
+                    st.success(f"🚀 Tarea enviada a {len(nuevas_tareas)} empleados.")
+                    time.sleep(1); st.rerun()
+
+                with st.container(border=True):
+                    st.subheader("🧹 Cierre de Cocina")
+                    if st.button("Lanzar a Cocineros", key="t_cierre_cocina"): lanzar_tarea_masiva("Cierre de Cocina", "Realizar tareas de cierre según protocolo (Campana, Baño María, Etiquetado).", "Cocinero")
+                with st.container(border=True):
+                    st.subheader("☀️ Apertura de Sala")
+                    if st.button("Lanzar a Camareros", key="t_aper_sala"): lanzar_tarea_masiva("Apertura de Sala", "Realizar tareas de apertura (Luces, TPV, Purgar, Repasar mesas).", "Camarero")
+
+                with st.expander("➕ Crear Tarea Personalizada"):
                     with st.form("nt", clear_on_submit=True):
                         tit = st.text_input("Título")
                         dsc = st.text_area("Descripción")
                         fl = st.date_input("Límite", min_value=date.today())
-                        
                         pos_u = df_u[df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
                         lp = pos_u['Nombre_Apellidos'].tolist()
+                        nd = st.selectbox("Asignar a:", ["Sin usuarios", "📣 Todos los Camareros", "📣 Todos los Cocineros"] + lp)
+                        requiere_foto = st.checkbox("📸 Requiere evidencia visual")
                         
-                        opciones_asignacion = ["Sin usuarios", "📣 Difusión: Todos los Camareros", "📣 Difusión: Todos los Cocineros"] + lp
-                        nd = st.selectbox("Asignar a:", opciones_asignacion)
-                        
-                        requiere_foto = st.checkbox("📸 Requiere evidencia visual (El usuario deberá subir una foto para completarla)")
-                        
-                        if st.form_submit_button("Crear Tarea"):
+                        if st.form_submit_button("Crear Tarea", type="primary"):
                             if not tit.strip() or not dsc.strip() or nd == "Sin usuarios" or not nd:
                                 st.error("⛔ Rellena Título, Descripción y Asignado.")
                             else:
                                 final_desc = dsc + " [REQ_FOTO]" if requiere_foto else dsc
                                 nuevas_t = []
                                 hoy_str = str(date.today())
-                                
-                                if "Difusión:" in nd:
+                                if "Todos los " in nd:
                                     rol_buscado = "Camarero" if "Camareros" in nd else "Cocinero"
                                     empleados_dif = pos_u[pos_u['Roles'].str.contains(rol_buscado, na=False, case=False)]
                                     for _, emp in empleados_dif.iterrows():
@@ -504,12 +579,10 @@ try:
                                 else:
                                     em_d = df_u[df_u['Nombre_Apellidos']==nd]['Email'].values[0]
                                     nuevas_t.append({"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": final_desc, "Asignado_A": em_d, "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl), "Fecha_Creacion": hoy_str, "Fecha_Completada": ""})
-                                
                                 conn.update(worksheet="Tareas", data=pd.concat([df_t, pd.DataFrame(nuevas_t)], ignore_index=True))
-                                st.success("Tarea(s) creada(s) con éxito.")
-                                time.sleep(1); st.rerun()
+                                st.success("Tarea(s) creada(s)."); time.sleep(1); st.rerun()
 
-            # MOTOR DE RENDERIZADO DE TAREAS (Pendientes, En Proceso, Completadas)
+            # RENDERIZADOR DE TAREAS PENDIENTES, EN PROCESO Y COMPLETADAS
             def draw(est_v, t_tab):
                 with t_tab:
                     f = df_t[df_t['Estado'] == est_v]
@@ -523,20 +596,19 @@ try:
                                 dias_rest = (d_lim - date.today()).days
                                 if dias_rest < 0: status_icon, limite_str = "🔴", "(⚠️ CADUCADA)"
                                 elif dias_rest == 0: status_icon, limite_str = "🟠", "(⏳ HOY)"
-                                else: status_icon, limite_str = "🟢", f"(📅 {dias_rest} días)"
+                                else: status_icon, limite_str = "🟢", f"(📅 {dias_rest} d)"
                             except: pass
                         
                         desc_limpia = str(r.get('Descripción', ''))
                         es_evidencia = "[REQ_FOTO]" in desc_limpia
                         desc_limpia = desc_limpia.replace("[REQ_FOTO]", "").strip()
+                        req_badge = " 📸 FOTO" if es_evidencia else ""
                         
-                        req_badge = " 📸 REQUIERE FOTO" if es_evidencia else ""
-                        header_txt = f"{status_icon} **{r['Titulo_Tarea']}** | De: {r['Creado_Por']} ➔ Para: {r.get('Asignado_A', 'N/A')} {limite_str} {req_badge}"
-                        
+                        header_txt = f"{status_icon} **{r['Titulo_Tarea']}** | De: {r['Creado_Por']} {limite_str} {req_badge}"
                         with st.expander(header_txt):
-                            st.write(f"**Descripción:** {desc_limpia}")
-                            if es_evidencia:
-                                st.markdown('<span class="req-foto">⚠️ Esta tarea exige evidencia visual para marcarse como completada.</span>', unsafe_allow_html=True)
+                            st.write(f"**Para:** {r.get('Asignado_A', 'N/A')}")
+                            st.write(f"**Desc:** {desc_limpia}")
+                            if es_evidencia: st.markdown('<span class="req-foto">⚠️ Sube foto para completarla.</span>', unsafe_allow_html=True)
                             st.divider()
                             
                             c_l = df_com[df_com['ID_Tarea'] == r['ID_Tarea']]
@@ -547,54 +619,29 @@ try:
                                     else: st.write(c['Texto'])
                             
                             with st.form(key=f"c_{r['ID_Tarea']}", clear_on_submit=True):
-                                mc, fc = st.text_input("Mensaje"), st.file_uploader("📸 Subir Foto/Evidencia", type=['jpg','png'], key=f"f_{r['ID_Tarea']}")
-                                if st.form_submit_button("Enviar Comentario"):
+                                mc, fc = st.text_input("Mensaje"), st.file_uploader("📸 Foto/Evidencia", type=['jpg','png'], key=f"f_{r['ID_Tarea']}")
+                                if st.form_submit_button("Enviar Comentario", type="secondary"):
                                     val = mc
                                     if fc: val = comprimir_foto(fc)
                                     n_c = pd.DataFrame([{"ID_Tarea": r['ID_Tarea'], "Nombre_Apellidos": u['Nombre_Apellidos'], "Texto": val, "Fecha_Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}])
                                     conn.update(worksheet="Comentarios_Tareas", data=pd.concat([df_com, n_c], ignore_index=True)); st.rerun()
                             
-                            # Cambio de Estado con Validación y Registro de Fecha
                             ns = st.selectbox("Estado:", ["Pendiente", "En Proceso", "Completada"], index=["Pendiente", "En Proceso", "Completada"].index(r['Estado']), key=f"s_{r['ID_Tarea']}")
-                            
                             if ns != r['Estado']:
                                 if ns == "Completada" and es_evidencia:
                                     tiene_foto = c_l[c_l['Texto'].str.contains("data:image", na=False)].shape[0] > 0
-                                    if not tiene_foto:
-                                        st.error("⛔ Tarea Bloqueada: Debes subir una foto demostrando el trabajo antes de completarla.")
-                                    else:
-                                        df_t.at[idx, 'Estado'] = ns
-                                        df_t.at[idx, 'Fecha_Completada'] = str(date.today())
-                                        conn.update(worksheet="Tareas", data=df_t); st.rerun()
+                                    if not tiene_foto: st.error("⛔ Sube una foto para completarla.")
+                                    else: df_t.at[idx, 'Estado'], df_t.at[idx, 'Fecha_Completada'] = ns, str(date.today()); conn.update(worksheet="Tareas", data=df_t); st.rerun()
                                 else:
                                     df_t.at[idx, 'Estado'] = ns
-                                    if ns == "Completada":
-                                        df_t.at[idx, 'Fecha_Completada'] = str(date.today())
-                                    else:
-                                        df_t.at[idx, 'Fecha_Completada'] = "" # Borra fecha si vuelve atrás
+                                    df_t.at[idx, 'Fecha_Completada'] = str(date.today()) if ns == "Completada" else ""
                                     conn.update(worksheet="Tareas", data=df_t); st.rerun()
                                     
             draw("Pendiente", tabs_t[2]); draw("En Proceso", tabs_t[3]); draw("Completada", tabs_t[4])
 
-        elif "Chat" in menu:
-            st.title("💬 Chat Soporte")
-            df_chat = load("Chat_Directo", 5)
-            df_u_chat = load("Usuarios", 300)
-            tm = u['Email']
-            if is_admin:
-                lc = df_u_chat[~df_u_chat['Roles'].str.contains("Admin")]['Nombre_Apellidos'].tolist()
-                tn = st.selectbox("Chat con:", lc)
-                tm = df_u_chat[df_u_chat['Nombre_Apellidos']==tn]['Email'].values[0]
-            for _, m in df_chat[df_chat['Usuario_Email']==tm].iterrows():
-                im = (not is_admin and m['Autor'] == 'Usuario') or (is_admin and m['Autor'] == 'Admin')
-                st.markdown(f'<div class="bubble {"bubble-user" if im else "bubble-admin"}">{m["Texto"]}</div>', unsafe_allow_html=True)
-            if p := st.chat_input("Escribe..."):
-                nm = pd.DataFrame([{"Usuario_Email": tm, "Texto": p, "Fecha_Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Autor": "Admin" if is_admin else "Usuario"}])
-                conn.update(worksheet="Chat_Directo", data=pd.concat([df_chat, nm], ignore_index=True))
-                enviar_aviso_email(tm, "Nuevo Mensaje Chat", f"Respuesta de Admin: {p}"); st.rerun()
-
-        elif "Documentos" in menu:
-            st.title("📄 Documentos")
+        # VISTA: DOCUMENTOS
+        elif vista == "Docs":
+            st.markdown("<h3 style='color:#D4AF37;'>📄 Documentos</h3>", unsafe_allow_html=True)
             df_d = load("Documentos", 600)
             if is_admin:
                 df_u_docs = load("Usuarios", 600)
@@ -620,153 +667,148 @@ try:
                         if sc != "Todas": dv = dv[dv['Categoria'] == sc]
             if not dv.empty:
                 sel_d = st.selectbox("Elegir Documento:", dv['Nombre Documento'])
-                st.components.v1.iframe(f"https://drive.google.com/file/d/{extraer_id_drive(dv[dv['Nombre Documento']==sel_d]['Enlace_Archivo'].values[0])}/preview", height=800)
+                st.components.v1.iframe(f"https://drive.google.com/file/d/{extraer_id_drive(dv[dv['Nombre Documento']==sel_d]['Enlace_Archivo'].values[0])}/preview", height=600)
             else:
-                st.info("No hay documentos.")
+                st.info("No hay documentos disponibles.")
 
-        elif "Manuales" in menu:
-            st.title("📚 Manuales")
-            df_m = load("Manuales", 600)
-            cats = df_m['Categoria'].unique()
-            for c in cats:
-                with st.expander(f"📂 {c}"):
-                    sub = df_m[df_m['Categoria'] == c]
-                    for _, r in sub.iterrows():
-                        st.write(f"**{r['Nombre_Manual']}**")
-                        if st.button("Ver", key=f"m_{r['Nombre_Manual']}"):
-                            st.components.v1.iframe(f"https://drive.google.com/file/d/{extraer_id_drive(r['Enlace Drive'])}/preview", height=800)
-
-        elif "FAQs" in menu:
-            st.title("❓ FAQs")
-            df_f = load("FAQ", 600)
-            cats = df_f['Categoria'].unique()
-            for c in cats:
-                with st.expander(f"❓ {c}"):
-                    sub = df_f[df_f['Categoria'] == c]
-                    for _, r in sub.iterrows():
-                        with st.expander(r['Pregunta']): st.write(r['Respuesta'])
-
-        # --- SECCIÓN: QUIZ MENSUAL AUTO ---
-        elif "Quiz" in menu:
-            st.title(f"🏆 Quiz Mensual: {MES_ACTUAL_QUIZ}")
-            st.write("Pon a prueba tus conocimientos sobre los Protocolos y Normas. Tienes **1 solo intento**. Las preguntas cambiarán automáticamente el mes que viene. ¡Compite por el primer puesto en el ranking!")
+        # VISTA: CHAT
+        elif vista == "Chat":
+            st.markdown("<h3 style='color:#D4AF37;'>💬 Chat Directo</h3>", unsafe_allow_html=True)
+            df_chat = load("Chat_Directo", 5)
+            df_u_chat = load("Usuarios", 300)
+            tm = u['Email']
+            if is_admin:
+                lc = df_u_chat[~df_u_chat['Roles'].str.contains("Admin")]['Nombre_Apellidos'].tolist()
+                tn = st.selectbox("Chat con:", lc)
+                tm = df_u_chat[df_u_chat['Nombre_Apellidos']==tn]['Email'].values[0]
+            
             st.divider()
+            for _, m in df_chat[df_chat['Usuario_Email']==tm].iterrows():
+                im = (not is_admin and m['Autor'] == 'Usuario') or (is_admin and m['Autor'] == 'Admin')
+                st.markdown(f'<div class="bubble {"bubble-user" if im else "bubble-admin"}">{m["Texto"]}</div>', unsafe_allow_html=True)
+            
+            if p := st.chat_input("Escribe aquí tu mensaje..."):
+                nm = pd.DataFrame([{"Usuario_Email": tm, "Texto": p, "Fecha_Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Autor": "Admin" if is_admin else "Usuario"}])
+                conn.update(worksheet="Chat_Directo", data=pd.concat([df_chat, nm], ignore_index=True))
+                enviar_aviso_email(tm, "Nuevo Mensaje Chat", f"Respuesta de Admin: {p}"); st.rerun()
 
-            try:
-                df_ranking = load("Ranking_Quiz", 0)
-            except Exception:
-                df_ranking = pd.DataFrame(columns=["Mes", "Email", "Nombre", "Rol", "Puntuacion", "Fecha"])
-                if is_admin:
-                    st.error("⚠️ AVISO PARA ADMIN: No se ha encontrado la pestaña 'Ranking_Quiz' en el Excel.")
+        # VISTA: MENÚ (CONFIGURACIÓN Y EXTRAS)
+        elif vista == "Menú":
+            st.markdown("<h3 style='color:#D4AF37;'>⚙️ Menú y Configuración</h3>", unsafe_allow_html=True)
+            
+            # Selector de Rol en la configuración
+            roles_disponibles = [r.strip() for r in str(u.get('Roles', '')).split(',') if r.strip()]
+            if len(roles_disponibles) > 1:
+                nuevo_rol = st.selectbox("👤 Tu Rol Activo:", roles_disponibles, index=roles_disponibles.index(st.session_state.rol_activo))
+                if nuevo_rol != st.session_state.rol_activo:
+                    st.session_state.rol_activo = nuevo_rol
+                    st.rerun()
+
+            tabs_menu = st.tabs(["🏆 Quiz", "📚 Manuales", "❓ FAQs", "ℹ️ Guía"])
+            
+            # QUIZ
+            with tabs_menu[0]:
+                st.subheader(f"Quiz Mensual: {MES_ACTUAL_QUIZ}")
+                try: df_ranking = load("Ranking_Quiz", 0)
+                except Exception:
+                    df_ranking = pd.DataFrame(columns=["Mes", "Email", "Nombre", "Rol", "Puntuacion", "Fecha"])
+                    st.error("Ranking no creado en GSheets.")
+                    st.stop()
+
+                ha_participado = not df_ranking[(df_ranking['Email'] == u['Email']) & (df_ranking['Mes'] == MES_ACTUAL_QUIZ)].empty
+
+                if ha_participado:
+                    st.success("✅ Ya has participado este mes.")
+                    mi_nota = df_ranking[(df_ranking['Email'] == u['Email']) & (df_ranking['Mes'] == MES_ACTUAL_QUIZ)]['Puntuacion'].values[0]
+                    st.metric("Tu Puntuación", f"{mi_nota} / 20")
+                    st.divider()
+                    st.subheader("📊 Ranking del Mes")
+                    df_mes = df_ranking[df_ranking['Mes'] == MES_ACTUAL_QUIZ].copy()
+                    df_mes['Puntuacion'] = pd.to_numeric(df_mes['Puntuacion'])
+                    df_ordenado = df_mes.sort_values(by=['Puntuacion', 'Fecha'], ascending=[False, True]).reset_index(drop=True)
+                    for index, row in df_ordenado.iterrows():
+                        pos = index + 1
+                        medalla = "🥇" if pos == 1 else "🥈" if pos == 2 else "🥉" if pos == 3 else f"{pos}º"
+                        st.markdown(f'<div class="rank-card"><div class="rank-pos">{medalla}</div><div class="rank-name">{row["Nombre"]} <span style="font-size:12px; color:gray;">({row["Rol"]})</span></div><div class="rank-score">{row["Puntuacion"]} pts</div></div>', unsafe_allow_html=True)
                 else:
-                    st.warning("El sistema de ranking se está configurando. Vuelve más tarde.")
-                st.stop()
-
-            ha_participado = not df_ranking[(df_ranking['Email'] == u['Email']) & (df_ranking['Mes'] == MES_ACTUAL_QUIZ)].empty
-
-            if ha_participado:
-                st.success("✅ Ya has participado en el Quiz de este mes. ¡Gracias!")
-                mi_nota = df_ranking[(df_ranking['Email'] == u['Email']) & (df_ranking['Mes'] == MES_ACTUAL_QUIZ)]['Puntuacion'].values[0]
-                st.metric("Tu Puntuación", f"{mi_nota} / 20")
-                st.divider()
-                st.subheader("📊 Ranking General del Mes")
-                
-                df_mes = df_ranking[df_ranking['Mes'] == MES_ACTUAL_QUIZ].copy()
-                df_mes['Puntuacion'] = pd.to_numeric(df_mes['Puntuacion'])
-                df_ordenado = df_mes.sort_values(by=['Puntuacion', 'Fecha'], ascending=[False, True]).reset_index(drop=True)
-                
-                for index, row in df_ordenado.iterrows():
-                    pos = index + 1
-                    medalla = "🥇" if pos == 1 else "🥈" if pos == 2 else "🥉" if pos == 3 else f"{pos}º"
-                    st.markdown(f"""
-                    <div class="rank-card">
-                        <div class="rank-pos">{medalla}</div>
-                        <div class="rank-name">{row['Nombre']} <span style="font-size:12px; color:gray;">({row['Rol']})</span></div>
-                        <div class="rank-score">{row['Puntuacion']} pts</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-            else:
-                diccionario_preguntas = QUIZ_COCINA if "Cocine" in rol_activo else QUIZ_SALA
-                tipo_examen = "Cocina" if "Cocine" in rol_activo else "Sala"
-                
-                st.info(f"Vas a realizar el examen correspondiente al área de: **{tipo_examen}**.")
-                
-                with st.form("quiz_form"):
-                    respuestas_usuario = {}
-                    for i, (pregunta, (opciones, correcta_idx)) in enumerate(diccionario_preguntas.items()):
-                        pregunta_limpia = re.sub(r'^\d+\.\s*', '', pregunta)
-                        st.markdown(f"**{i+1}. {pregunta_limpia}**")
-                        respuestas_usuario[i] = st.radio("Opciones", opciones, key=f"q_{i}", index=None, label_visibility="collapsed")
-                        st.write("")
-                    
-                    if st.form_submit_button("Enviar Mis Respuestas", type="primary", use_container_width=True):
-                        if None in respuestas_usuario.values():
-                            st.error("⛔ Debes responder a todas las preguntas antes de enviar el examen.")
-                        else:
-                            puntuacion = 0
-                            for i, (pregunta, (opciones, correcta_idx)) in enumerate(diccionario_preguntas.items()):
-                                si_acerto = respuestas_usuario[i] == opciones[correcta_idx]
-                                if si_acerto:
-                                    puntuacion += 1
-                            
-                            nuevo_registro = pd.DataFrame([{
-                                "Mes": MES_ACTUAL_QUIZ,
-                                "Email": u['Email'],
-                                "Nombre": u['Nombre_Apellidos'],
-                                "Rol": rol_activo,
-                                "Puntuacion": puntuacion,
-                                "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            }])
-                            
-                            try:
+                    diccionario_preguntas = QUIZ_COCINA if "Cocine" in st.session_state.rol_activo else QUIZ_SALA
+                    tipo_examen = "Cocina" if "Cocine" in st.session_state.rol_activo else "Sala"
+                    st.info(f"Examen de: **{tipo_examen}**.")
+                    with st.form("quiz_form"):
+                        respuestas_usuario = {}
+                        for i, (pregunta, (opciones, correcta_idx)) in enumerate(diccionario_preguntas.items()):
+                            pregunta_limpia = re.sub(r'^\d+\.\s*', '', pregunta)
+                            st.markdown(f"**{i+1}. {pregunta_limpia}**")
+                            respuestas_usuario[i] = st.radio("Opciones", opciones, key=f"q_{i}", index=None, label_visibility="collapsed")
+                            st.write("")
+                        
+                        if st.form_submit_button("Enviar Mis Respuestas", type="primary", use_container_width=True):
+                            if None in respuestas_usuario.values(): st.error("⛔ Responde todas las preguntas.")
+                            else:
+                                puntuacion = 0
+                                for i, (pregunta, (opciones, correcta_idx)) in enumerate(diccionario_preguntas.items()):
+                                    if respuestas_usuario[i] == opciones[correcta_idx]: puntuacion += 1
+                                nuevo_registro = pd.DataFrame([{"Mes": MES_ACTUAL_QUIZ, "Email": u['Email'], "Nombre": u['Nombre_Apellidos'], "Rol": st.session_state.rol_activo, "Puntuacion": puntuacion, "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}])
                                 conn.update(worksheet="Ranking_Quiz", data=pd.concat([df_ranking, nuevo_registro], ignore_index=True))
-                                st.success("¡Examen enviado correctamente!")
-                                time.sleep(1)
-                                st.rerun()
-                            except Exception as e:
-                                st.error("Hubo un problema al guardar tu nota. Avisa a administración.")
+                                st.success("¡Enviado!"); time.sleep(1); st.rerun()
+            
+            # MANUALES
+            with tabs_menu[1]:
+                df_m = load("Manuales", 600)
+                cats = df_m['Categoria'].unique()
+                for c in cats:
+                    with st.expander(f"📂 {c}"):
+                        for _, r in df_m[df_m['Categoria'] == c].iterrows():
+                            st.write(f"**{r['Nombre_Manual']}**")
+                            if st.button("Ver", key=f"m_{r['Nombre_Manual']}", type="secondary"): st.components.v1.iframe(f"https://drive.google.com/file/d/{extraer_id_drive(r['Enlace Drive'])}/preview", height=500)
+            
+            # FAQS
+            with tabs_menu[2]:
+                df_f = load("FAQ", 600)
+                cats = df_f['Categoria'].unique()
+                for c in cats:
+                    with st.expander(f"❓ {c}"):
+                        for _, r in df_f[df_f['Categoria'] == c].iterrows():
+                            with st.expander(r['Pregunta']): st.write(r['Respuesta'])
+                            
+            # GUIA
+            with tabs_menu[3]:
+                st.write("Esta herramienta es tu centro de mando.")
+                with st.expander("📱 Tablón y 📄 Docs"): st.write("Noticias generales y acceso a tus nóminas de forma privada.")
+                with st.expander("✅ Tareas (Evidencia Visual)"): st.write("🟢 Verde: En plazo | 🟠 Naranja: Hoy | 🔴 Rojo: Caducada. \n\n📸 **Foto Obligatoria:** Si la tarea tiene el aviso amarillo, debes subir foto al chat para cerrarla.")
+                with st.expander("🏆 Quiz y 💬 Chat"): st.write("El Quiz cambia cada mes y genera un ranking público. Usa el Chat para hablar con administración.")
 
-        elif "Guía de Uso" in menu:
-            st.title("ℹ️ Manual de Usuario - Intranet Cantina")
-            st.markdown("### ¡Bienvenido/a al equipo! 🍴")
-            st.write("Esta herramienta es tu centro de mando. Aquí tienes una guía rápida.")
-            st.divider()
+            st.write("")
+            if st.button("🚪 Cerrar Sesión", type="secondary", use_container_width=True): 
+                st.session_state.clear()
+                st.rerun()
 
-            with st.expander("📱 1. Tablón de Novedades"):
-                st.write("* Noticias, eventos y avisos importantes. Échale un ojo cada vez que entres.")
+        # ---------------------------------------------------------
+        # BOTTOM NAV BAR (ESTILO APP NATIVA)
+        # ---------------------------------------------------------
+        def cambiar_vista(nueva_vista):
+            st.session_state.app_section = nueva_vista
 
-            with st.expander("📄 2. Mis Documentos"):
-                st.write("* Selecciona la categoría y visualiza tus nóminas o contratos de manera privada.")
-
-            with st.expander("📚 3. Manuales y Protocolos"):
-                st.write("* Recetas, protocolos de limpieza y normas organizados por carpetas.")
-
-            with st.expander("✅ 4. Gestión de Tareas (¡Novedad Visual!)"):
-                st.write("""
-                * 🟢 **Verde:** Tienes tiempo. | 🟠 **Naranja:** ¡Fecha límite HOY! | 🔴 **Rojo:** Tarea CADUCADA.
-                * **Evidencia Visual (📸):** Si una tarea tiene el indicador amarillo de Evidencia, **no podrás completarla** hasta que subas una foto del trabajo hecho al chat de la tarea.
-                * **Tareas de Difusión:** Si ves una tarea general (ej. Limpieza general), es porque se ha mandado a todos tus compañeros a la vez. ¡Sube tu foto para completarla!
-                * **Dashboard Analítico:** La nueva pestaña inicial te permite filtrar tus tareas y revisar tus estadísticas de rendimiento y trabajo pendiente.
-                """)
-
-            with st.expander("❓ 5. FAQs y 💬 6. Chat"):
-                st.write("""
-                * **FAQs:** Respuestas rápidas a dudas comunes.
-                * **Chat:** Chat privado con administración. El punto rojo 🔴 significa nueva respuesta.
-                """)
-                
-            with st.expander("🏆 7. Quiz Mensual y Concurso"):
-                st.info("Pon a prueba lo que sabes y compite con tus compañeros.")
-                st.write("""
-                * Cada mes se seleccionarán automáticamente **20 preguntas distintas** de los manuales.
-                * Si eres de Sala verás preguntas de atención al cliente. Si eres de Cocina verás preguntas de tu área.
-                * Solo tienes **un intento por mes**. ¡Asegúrate de leer bien antes de enviar!
-                * Al finalizar, entrarás en el **Ranking Público**. Si empatas a puntos, gana el que haya hecho el examen primero.
-                """)
+        nav_container = st.container()
+        with nav_container:
+            # Marcador HTML para que el CSS engache este contenedor y lo fije abajo
+            st.markdown('<div id="bottom-nav-marker"></div>', unsafe_allow_html=True)
+            
+            c1, c2, c3, c4, c5 = st.columns(5)
+            
+            with c1:
+                st.button("📱\nInicio", key="nav_inicio", on_click=cambiar_vista, args=("Inicio",), use_container_width=True)
+            with c2:
+                st.button("✅\nTareas", key="nav_tareas", on_click=cambiar_vista, args=("Tareas",), use_container_width=True)
+            with c3:
+                st.button("📄\nDocs", key="nav_docs", on_click=cambiar_vista, args=("Docs",), use_container_width=True)
+            with c4:
+                icono_chat = "🔴\nChat" if hay_mensaje else "💬\nChat"
+                st.button(icono_chat, key="nav_chat", on_click=cambiar_vista, args=("Chat",), use_container_width=True)
+            with c5:
+                st.button("⚙️\nMenú", key="nav_menu", on_click=cambiar_vista, args=("Menú",), use_container_width=True)
 
 except Exception as e:
     reportar_error_a_mario(e)
     st.error("⚠️ Error técnico reportado a Mario.")
-    if st.button("Recargar"): st.rerun()
-
+    if st.button("Recargar", type="primary"): st.rerun()
