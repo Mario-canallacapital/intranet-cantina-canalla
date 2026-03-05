@@ -1,6 +1,6 @@
-# --- VERSIÓN v42.0 (CORPORATE SIDEBAR EDITION) ---
+# --- VERSIÓN v42.1 (CORPORATE SIDEBAR + FULL GUIDE) ---
 # Actualizado: 05/03/2026 
-# Novedades: Retorno al menú lateral robusto, botón hamburguesa destacado, botón de recarga interna.
+# Novedades: Guía de Uso completamente detallada y restaurada.
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -222,7 +222,7 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v42.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v42.1 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
 # --- CONEXIÓN A GOOGLE SHEETS ---
@@ -460,7 +460,7 @@ try:
             ])
             
             st.divider()
-            st.info("⚠️ NO arrastres la pantalla hacia abajo para recargar o se cerrará tu sesión.")
+            st.info("⚠️ NO arrastres la pantalla hacia abajo para recargar.")
             if st.button("🔄 Actualizar Datos", type="primary", use_container_width=True):
                 st.rerun()
                 
@@ -743,14 +743,86 @@ try:
                     for _, r in df_f[df_f['Categoria'] == c].iterrows():
                         with st.expander(r['Pregunta']): st.write(r['Respuesta'])
                         
+        # --- GUÍA DE USO DETALLADA (RESTAURADA EN v42.1) ---
         elif "Guía" in menu:
-            st.markdown("<h3 style='color:#E63946; font-weight:800;'>ℹ️ Guía de Uso</h3>", unsafe_allow_html=True)
-            st.write("Esta herramienta es tu centro de mando.")
-            with st.expander("📱 Tablón y 📄 Docs"): st.write("Noticias generales y acceso a tus nóminas.")
-            with st.expander("✅ Tareas (Evidencia)"): st.write("🟢 Verde: En plazo | 🟠 Naranja: Hoy | 🔴 Rojo: Caducada. \n📸 **Foto Obligatoria:** Si la tarea tiene el aviso, sube foto al chat.")
-            with st.expander("🔄 ¿Por qué se me cierra la sesión?"): st.write("Nunca arrastres la pantalla hacia abajo para recargar o la App se reiniciará. Usa el botón 'Actualizar Datos' del menú.")
+            st.markdown("<h3 style='color:#E63946; font-weight:800;'>ℹ️ Guía Completa de Uso</h3>", unsafe_allow_html=True)
+            st.write("¡Bienvenido/a a la Intranet de Cantina Canalla! Aquí tienes el manual paso a paso para dominar tu nueva herramienta de trabajo.")
+            st.divider()
+
+            with st.expander("📱 1. Inicio (Tablón de Novedades)"):
+                st.info("Tu muro principal de información.")
+                st.write("""
+                * **¿Para qué sirve?:** Es el canal oficial de comunicación. Aquí la administración publicará avisos importantes, cambios de menú, ofertas o comunicados generales.
+                * **Formato visual:** Funciona de forma muy parecida a Instagram. Verás la foto, el título del aviso, el mensaje y la fecha.
+                * **Consejo:** Échale un ojo siempre al empezar tu turno para no perderte nada.
+                """)
+
+            with st.expander("✅ 2. Gestión de Tareas (¡Importante!)"):
+                st.warning("El centro de operaciones de tu turno.")
+                st.write("""
+                Aquí verás las tareas que se te han asignado o los checklist de tu área (ej. Cierre de Cocina).
+                
+                **El Semáforo de Prioridad:**
+                * 🟢 **Verde:** Tienes tiempo (indica los días restantes).
+                * 🟠 **Naranja:** ¡La fecha límite es HOY!
+                * 🔴 **Rojo:** Tarea CADUCADA. Trata de evitar llegar a este punto.
+                
+                **📸 Evidencia Visual (FOTOS):**
+                * Si ves un cartel amarillo que dice **"📸 FOTO"** o "Requiere evidencia", significa que **no podrás pasar la tarea a Completada** simplemente con un clic.
+                * Para cerrarla, debes hacer una foto de tu trabajo (ej. la plancha limpia) y subirla en el botón de adjuntar del chat de esa misma tarea.
+                
+                **📢 Tareas de Difusión:**
+                * A veces verás tareas que son para "Todos los Camareros". Si la ves, complétala tú también para dejar constancia de que has realizado tu parte (ej. leer un nuevo protocolo).
+                
+                **📊 Dashboard (Gráficos):**
+                * En la primera pestaña de las tareas puedes ver gráficas y filtrar tu rendimiento y el de tus compañeros.
+                """)
+
+            with st.expander("📄 3. Mis Documentos"):
+                st.info("Tu archivo personal y privado.")
+                st.write("""
+                * **¿Para qué sirve?:** Aquí la empresa sube tus nóminas mensuales, tu contrato laboral, y documentos de bajas o altas.
+                * **Seguridad:** Esta carpeta es **100% confidencial**. Solo tú (al iniciar sesión con tu NIF y clave) puedes ver tus propios documentos.
+                * **¿Cómo usarlo?:** Selecciona la Categoría (ej. Nóminas), elige el mes que quieres ver, y el documento aparecerá en pantalla para que lo leas o lo descargues.
+                """)
+
+            with st.expander("📚 4. Manuales y Protocolos"):
+                st.write("""
+                La enciclopedia de Cantina Canalla. No hace falta preguntar dónde está la receta de la Margarita, la tienes aquí.
+                * Los documentos están organizados por **carpetas** (Cocina, Sala, Normativas...).
+                * Pulsa en la carpeta y luego en "Ver" para que el PDF se abra directamente en tu teléfono.
+                """)
+
+            with st.expander("❓ 5. FAQs (Preguntas Frecuentes)"):
+                st.write("""
+                ¿Tienes una duda rápida? "¿Cómo pido mis vacaciones?", "¿Qué hago si se estropea la TPV?".
+                Antes de escribir por el chat, busca aquí; las respuestas a los problemas más comunes ya están resueltas.
+                """)
+
+            with st.expander("💬 6. Chat de Soporte"):
+                st.success("Línea directa con tu encargado o administración.")
+                st.write("""
+                * Úsalo para dudas personales, problemas con una nómina o incidencias técnicas de la App.
+                * Cuando la administración te conteste, verás que en el menú lateral aparece un **punto rojo (🔴 Chat)**. Eso significa que tienes un mensaje sin leer.
+                """)
+
+            with st.expander("🏆 7. Quiz Mensual (Concurso)"):
+                st.info("¡Demuestra lo que sabes y lidera el Ranking!")
+                st.write("""
+                * Cada mes (ej. "Marzo 2026"), el sistema genera automáticamente **20 preguntas de examen** basadas en los manuales de tu área (Cocina o Sala).
+                * **Reglas:** Tienes **UN SOLO INTENTO** por mes. Piensa bien tus respuestas antes de pulsar "Enviar".
+                * Al terminar, tu puntuación irá directamente al **Ranking del Mes**. Todos podrán ver quién es el mejor de la Cantina. Si empatas a puntos con alguien, gana el que haya hecho el examen antes.
+                """)
+                
+            with st.expander("🔄 8. Truco Vital: ¿Por qué se me cierra la sesión?"):
+                st.error("IMPORTANTE: Cómo recargar la App.")
+                st.write("""
+                Esta App es un programa en vivo. Si en tu móvil **arrastras la pantalla hacia abajo** para recargar (como harías en Instagram o una web normal), el navegador borrará la memoria y **te expulsará, obligándote a meter el usuario y clave otra vez.**
+                
+                * **La Solución:** Para actualizar la información o ver si hay tareas nuevas, usa SIEMPRE el botón rojo grande que hay en el menú lateral llamado **"🔄 Actualizar Datos"**.
+                """)
 
 except Exception as e:
     reportar_error_a_mario(e)
-    st.error("⚠️ Error técnico reportado a Admin.")
+    st.error("⚠️ Error técnico reportado a Mario.")
     if st.button("Recargar", type="primary"): st.rerun()
