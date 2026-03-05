@@ -1,6 +1,6 @@
-# --- VERSIÓN v41.0 (CORPORATE WEB EDITION) ---
+# --- VERSIÓN v41.1 (CORPORATE WEB EDITION - FIX) ---
 # Actualizado: 05/03/2026 
-# Novedades: Modo Light Corporativo, Fix Scroll bloqueado, Menú Inferior XL.
+# Corrección: Se han restaurado las funciones auxiliares borradas por error.
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -172,7 +172,37 @@ else:
     QUIZ_COCINA = POOL_COCINA
 random.seed()
 
-# --- FUNCIONES BASE ---
+# --- FUNCIONES BASE (¡¡AQUÍ ESTÁ LA CORRECCIÓN!!) ---
+def cargar_logo_base64():
+    try:
+        with open("armband-PhotoRoom.png-PhotoRoom.png", "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except: return None
+
+def comprimir_foto(upload_file):
+    img = Image.open(upload_file)
+    if img.mode in ("RGBA", "P"): img = img.convert("RGB")
+    img.thumbnail((400, 400))
+    buffer = BytesIO()
+    img.save(buffer, format="JPEG", quality=30)
+    return f"data:image/jpeg;base64,{base64.b64encode(buffer.getvalue()).decode()}"
+
+def comparten_sede(s1, s2):
+    if pd.isna(s1) or pd.isna(s2): return False
+    l1 = set(x.strip() for x in str(s1).split(',') if x.strip())
+    l2 = set(x.strip() for x in str(s2).split(',') if x.strip())
+    return not l1.isdisjoint(l2)
+
+def extraer_id_drive(url):
+    if not isinstance(url, str) or pd.isna(url): return None
+    match = re.search(r'[-\w]{25,}', url)
+    return match.group(0) if match else None
+
+def procesar_img_drive(url):
+    fid = extraer_id_drive(url)
+    if not fid: return None
+    return f"https://lh3.googleusercontent.com/d/{fid}"
+
 def enviar_aviso_email(destinatario, asunto, cuerpo):
     try:
         msg = MIMEMultipart()
@@ -192,15 +222,16 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v41.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v41.1 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
+
 
 # --- BLOQUE PRINCIPAL DE LA APP ---
 try:
     # --- 🎨 CSS: ESTILO WEB CORPORATIVO (LIGHT) + FIX SCROLL + FIX MENÚ ---
     st.markdown("""
         <style>
-        /* 1. Fondo de la App, Colores Corporativos y FIX SCROLL */
+        /* Fondo de la App, Colores Corporativos y FIX SCROLL */
         .stApp, [data-testid="stAppViewContainer"] { 
             background-color: #F9F9F9 !important; 
         }
@@ -214,13 +245,13 @@ try:
             color: #222222 !important; 
         }
         
-        /* 2. Ocultar menús por defecto de Streamlit */
+        /* Ocultar menús por defecto de Streamlit */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header[data-testid="stHeader"] {visibility: hidden;}
         [data-testid="stSidebar"] {display: none !important;}
         
-        /* 3. Botones y Cajas (Inputs) */
+        /* Botones y Cajas (Inputs) */
         button[data-testid="stBaseButton-primary"] {
             background-color: #E63946 !important; /* Rojo Cantina */
             color: #FFFFFF !important;
@@ -248,7 +279,7 @@ try:
         }
         div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea { color: #222222 !important; }
         
-        /* 4. Estilo de Cajas, Tareas y Tablón */
+        /* Estilo de Cajas, Tareas y Tablón */
         .insta-card { background-color: #FFFFFF !important; border-radius: 12px; border: 1px solid #EAEAEA; margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .insta-header { padding: 12px; border-bottom: 1px solid #EAEAEA; font-weight: 700; color: #E63946 !important; }
         .insta-footer { padding: 12px; }
@@ -270,7 +301,7 @@ try:
         .rank-name { font-size: 18px; font-weight: bold; flex-grow: 1; color:#222222;}
         .rank-score { font-size: 20px; font-weight: bold; color: #2A9D8F; }
 
-        /* 5. EL MENÚ INFERIOR (BOTTOM NAV) AMPLIADO Y FIJADO */
+        /* EL MENÚ INFERIOR (BOTTOM NAV) AMPLIADO Y FIJADO */
         div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) {
             position: fixed;
             bottom: 0;
@@ -279,7 +310,7 @@ try:
             background-color: #FFFFFF;
             z-index: 99999;
             border-top: 1px solid #EAEAEA;
-            padding: 8px 5px 25px 5px; /* Espacio extra inferior para la barra de iOS */
+            padding: 8px 5px 25px 5px; 
             box-shadow: 0px -4px 15px rgba(0,0,0,0.06);
         }
         div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) button {
@@ -626,7 +657,7 @@ try:
                 if not dv.empty and 'Categoria' in dv.columns:
                     cats_d = dv['Categoria'].unique().tolist()
                     if cats_d:
-                        sc = st.selectbox("📂 Categoría:", ["Todas"] + cats_d)
+                        sc = st.selectbox("📂 Filtrar Categoría:", ["Todas"] + cats_d)
                         if sc != "Todas": dv = dv[dv['Categoria'] == sc]
             else:
                 dv = df_d[df_d['NIF_NIE'].astype(str).str.strip() == str(u['NIF_NIE']).strip()]
