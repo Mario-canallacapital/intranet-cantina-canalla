@@ -1,6 +1,6 @@
-# --- VERSIÓN v41.1 (CORPORATE WEB EDITION - FIX) ---
+# --- VERSIÓN v42.0 (CORPORATE SIDEBAR EDITION) ---
 # Actualizado: 05/03/2026 
-# Corrección: Se han restaurado las funciones auxiliares borradas por error.
+# Novedades: Retorno al menú lateral robusto, botón hamburguesa destacado, botón de recarga interna.
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -172,7 +172,7 @@ else:
     QUIZ_COCINA = POOL_COCINA
 random.seed()
 
-# --- FUNCIONES BASE (¡¡AQUÍ ESTÁ LA CORRECCIÓN!!) ---
+# --- FUNCIONES BASE ---
 def cargar_logo_base64():
     try:
         with open("armband-PhotoRoom.png-PhotoRoom.png", "rb") as f:
@@ -222,150 +222,108 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v41.1 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v42.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
+# --- CONEXIÓN A GOOGLE SHEETS ---
+conn = st.connection("gsheets", type=GSheetsConnection)
+def load(p, ttl=5):
+    for i in range(3):
+        try: return conn.read(worksheet=p, ttl=ttl)
+        except Exception as e:
+            if i == 2: raise e
+            time.sleep(2)
+
+# --- VARIABLES DE SESIÓN ---
+if 'auth' not in st.session_state: st.session_state.auth = False
+if 'page' not in st.session_state: st.session_state.page = "login"
 
 # --- BLOQUE PRINCIPAL DE LA APP ---
 try:
-    # --- 🎨 CSS: ESTILO WEB CORPORATIVO (LIGHT) + FIX SCROLL + FIX MENÚ ---
+    # --- 🎨 CSS: ESTILO CANALLA (DARK & RED) Y FIX DEL BOTÓN MÓVIL ---
     st.markdown("""
         <style>
-        /* Fondo de la App, Colores Corporativos y FIX SCROLL */
-        .stApp, [data-testid="stAppViewContainer"] { 
-            background-color: #F9F9F9 !important; 
-        }
-        /* FIX SCROLL: Asegura espacio al fondo para que el menú no tape nada */
-        .main .block-container {
-            padding-bottom: 120px !important; 
-        }
+        /* 1. Fondo oscuro corporativo */
+        .stApp { background-color: #0A0A0A !important; color: #FFFFFF !important; }
+        [data-testid="stSidebar"] { background-color: #111111 !important; border-right: 1px solid #333; }
         
-        /* Textos oscuros para modo Light */
-        h1, h2, h3, h4, h5, h6, p, span, label, li, .stMarkdown { 
-            color: #222222 !important; 
-        }
-        
-        /* Ocultar menús por defecto de Streamlit */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header[data-testid="stHeader"] {visibility: hidden;}
-        [data-testid="stSidebar"] {display: none !important;}
-        
-        /* Botones y Cajas (Inputs) */
-        button[data-testid="stBaseButton-primary"] {
-            background-color: #E63946 !important; /* Rojo Cantina */
+        /* 2. SUPER BOTÓN HAMBURGUESA FLOTANTE PARA MÓVIL */
+        [data-testid="collapsedControl"] {
+            background-color: #E63946 !important; /* Rojo vivo */
             color: #FFFFFF !important;
-            font-weight: bold !important;
+            border-radius: 8px !important;
+            padding: 8px !important;
+            box-shadow: 0px 4px 10px rgba(230, 57, 70, 0.4) !important;
+            z-index: 999999 !important;
+        }
+        [data-testid="collapsedControl"] svg {
+            fill: #FFFFFF !important;
+            color: #FFFFFF !important;
+            width: 28px !important;
+            height: 28px !important;
+        }
+        
+        /* 3. Colores de textos generales y botones */
+        h1, h2, h3, p, span, label, .stMarkdown { color: #FFFFFF !important; }
+        
+        button[data-testid="stBaseButton-primary"] {
+            background-color: #E63946 !important;
+            color: #FFFFFF !important;
+            font-weight: 800 !important;
             border: none !important;
             border-radius: 8px !important;
-            box-shadow: 0 2px 4px rgba(230, 57, 70, 0.3) !important;
         }
-        button[data-testid="stBaseButton-primary"] p { color: #FFFFFF !important; }
-        
         button[data-testid="stBaseButton-secondary"] {
-            background-color: #FFFFFF !important;
-            color: #222222 !important;
-            border: 1px solid #CCCCCC !important;
+            background-color: #1A1A1A !important;
+            color: #FFFFFF !important; 
+            border: 1px solid #E63946 !important;
             border-radius: 8px !important;
             font-weight: 600 !important;
         }
-        button[data-testid="stBaseButton-secondary"] p { color: #222222 !important; }
         
-        /* Forzar inputs y desplegables a ser blancos con letra oscura */
+        /* Inputs y Desplegables con contraste visible */
         div[data-baseweb="input"] > div, div[data-baseweb="textarea"] > div, div[data-baseweb="select"] > div {
-            background-color: #FFFFFF !important;
-            border: 1px solid #DDDDDD !important;
+            background-color: #1A1A1A !important;
+            border: 1px solid #444444 !important;
             border-radius: 8px !important;
+            color: white !important;
         }
-        div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea { color: #222222 !important; }
+        div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea { color: #FFFFFF !important; }
         
-        /* Estilo de Cajas, Tareas y Tablón */
-        .insta-card { background-color: #FFFFFF !important; border-radius: 12px; border: 1px solid #EAEAEA; margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .insta-header { padding: 12px; border-bottom: 1px solid #EAEAEA; font-weight: 700; color: #E63946 !important; }
+        /* 4. Tarjetas y Cajas de diseño */
+        .insta-card { background-color: #141414 !important; border-radius: 12px; border: 1px solid #333; margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto; overflow: hidden; }
+        .insta-header { padding: 12px; border-bottom: 1px solid #333; font-weight: 700; color: #E63946 !important; }
         .insta-footer { padding: 12px; }
-        .insta-date { font-size: 11px; color: #888888; margin-top: 5px;}
+        .insta-date { font-size: 11px; color: gray; margin-top: 5px;}
         
         .bubble { padding: 10px 15px; border-radius: 20px; margin-bottom: 10px; max-width: 75%; font-size: 14px; }
         .bubble-user { background-color: #E63946 !important; color: white !important; margin-left: auto; border-bottom-right-radius: 4px; font-weight: 500;}
-        .bubble-admin { background-color: #EAEAEA !important; color: #222222 !important; margin-right: auto; border-bottom-left-radius: 4px; }
+        .bubble-admin { background-color: #222222 !important; color: white !important; margin-right: auto; border-bottom-left-radius: 4px; }
         
-        .stExpander { background-color: #FFFFFF !important; border: 1px solid #E0E0E0 !important; border-radius: 8px !important; }
-        div[data-testid="stExpander"] details summary p { font-weight: 600; color: #111111 !important;}
+        .stExpander { background-color: #141414 !important; border: 1px solid #333 !important; border-radius: 8px !important; }
+        .status-expired { color: #ff4b4b !important; font-weight: bold; }
+        .status-ok { color: #00ff00 !important; }
+        .req-foto { color: #111111 !important; font-size: 11px; font-weight: bold; background: #FFD166; padding: 4px 8px; border-radius: 6px;}
         
-        .status-expired { color: #D32F2F !important; font-weight: bold; }
-        .status-ok { color: #2A9D8F !important; font-weight: bold; }
-        .req-foto { color: #111111 !important; font-size: 12px; font-weight: bold; background: #FFD166; padding: 4px 8px; border-radius: 6px;}
-        
-        .rank-card { background-color: #FFFFFF; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #E63946; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);}
+        .rank-card { background-color: #141414; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #E63946; display: flex; justify-content: space-between; align-items: center;}
         .rank-pos { font-size: 24px; font-weight: bold; color: #E63946; width: 40px;}
-        .rank-name { font-size: 18px; font-weight: bold; flex-grow: 1; color:#222222;}
-        .rank-score { font-size: 20px; font-weight: bold; color: #2A9D8F; }
-
-        /* EL MENÚ INFERIOR (BOTTOM NAV) AMPLIADO Y FIJADO */
-        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: #FFFFFF;
-            z-index: 99999;
-            border-top: 1px solid #EAEAEA;
-            padding: 8px 5px 25px 5px; 
-            box-shadow: 0px -4px 15px rgba(0,0,0,0.06);
-        }
-        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) button {
-            background-color: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            height: auto !important;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        /* LETRAS MÁS GRANDES EN EL MENÚ INFERIOR */
-        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) p {
-            font-size: 15px !important; 
-            line-height: 1.3 !important;
-            margin-top: 5px;
-            font-weight: 800 !important;
-            color: #666666 !important;
-        }
-        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) button:hover p,
-        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) button:active p {
-            color: #E63946 !important; /* Rojo al pulsar */
-        }
-        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) > div > div {
-            gap: 0 !important;
-        }
+        .rank-name { font-size: 18px; font-weight: bold; flex-grow: 1; color: white;}
+        .rank-score { font-size: 20px; font-weight: bold; color: #00ff00; }
+        
+        .logo-container { display: flex; justify-content: center; padding: 10px 0; flex-direction: column; align-items: center; }
+        .circular-logo { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 2px solid #E63946; margin-bottom: 10px; }
         </style>
     """, unsafe_allow_html=True)
-
-    # --- CONEXIÓN A GOOGLE SHEETS ---
-    conn = st.connection("gsheets", type=GSheetsConnection)
-    def load(p, ttl=5):
-        for i in range(3):
-            try: return conn.read(worksheet=p, ttl=ttl)
-            except Exception as e:
-                if i == 2: raise e
-                time.sleep(2)
-
-    # --- VARIABLES DE SESIÓN ---
-    if 'auth' not in st.session_state: st.session_state.auth = False
-    if 'page' not in st.session_state: st.session_state.page = "login"
-    if 'app_section' not in st.session_state: st.session_state.app_section = "Inicio"
 
     # ==========================================
     # PANTALLA 1: LOGIN
     # ==========================================
     if not st.session_state.auth:
-        st.write("") # Espaciador
         col1, col2, col3 = st.columns([1,1.5,1])
         with col2:
             logo = cargar_logo_base64()
             st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-            if logo: st.markdown(f'<img src="data:image/png;base64,{logo}" class="circular-logo" style="border-color: #E63946;">', unsafe_allow_html=True)
+            if logo: st.markdown(f'<img src="data:image/png;base64,{logo}" class="circular-logo">', unsafe_allow_html=True)
             st.markdown('<h2 style="text-align: center; color: #E63946 !important; font-weight:800;">Intranet Cantina</h2></div>', unsafe_allow_html=True)
             
             if st.session_state.page == "login":
@@ -430,7 +388,7 @@ try:
                     st.session_state.page = "notifications"; st.rerun()
 
     # ==========================================
-    # PANTALLA 3: NOTIFICACIONES AL ENTRAR
+    # PANTALLA 3: NOTIFICACIONES
     # ==========================================
     elif st.session_state.page == "notifications":
         u = st.session_state.user
@@ -455,24 +413,14 @@ try:
             conn.update(worksheet="Usuarios", data=df); st.session_state.page = "main"; st.rerun()
 
     # ==========================================
-    # PANTALLA 4: APP PRINCIPAL (INTERFAZ TIPO APP MÓVIL)
+    # PANTALLA 4: APP PRINCIPAL (CON SIDEBAR RESTAURADO)
     # ==========================================
     elif st.session_state.page == "main":
         u = st.session_state.user
+        roles_disponibles = [r.strip() for r in str(u.get('Roles', '')).split(',') if r.strip()]
         is_admin = st.session_state.rol_activo == "Admin"
         is_encargado = st.session_state.rol_activo == "Encargado"
 
-        # --- CABECERA SUPERIOR ---
-        col_logo, col_info = st.columns([1, 4])
-        with col_logo:
-            logo_data = cargar_logo_base64()
-            if logo_data: 
-                st.markdown(f'<img src="data:image/png;base64,{logo_data}" style="width:55px; height:55px; border-radius:50%; border: 2px solid #E63946; object-fit: cover;">', unsafe_allow_html=True)
-        with col_info:
-            st.markdown(f"<div style='margin-top: 5px; line-height: 1.2;'><strong style='font-size: 18px; color:#222;'>{u['Nombre_Apellidos']}</strong><br><span style='color:#E63946; font-size:14px; font-weight:bold;'>{st.session_state.rol_activo}</span> <span style='color:gray; font-size:12px;'>📍 {u['Sede']}</span></div>", unsafe_allow_html=True)
-        st.divider()
-
-        # Check notificaciones de chat
         df_c_check = load("Chat_Directo", 5)
         hay_mensaje = False
         try:
@@ -483,11 +431,46 @@ try:
                     hay_mensaje = True
         except: pass
 
-        # --- CONTROLADOR DE VISTAS ---
-        vista = st.session_state.app_section
+        # --- MENÚ LATERAL (SIDEBAR) ---
+        with st.sidebar:
+            logo_data = cargar_logo_base64()
+            if logo_data: st.markdown(f'<div style="text-align: center; margin-bottom:15px;"><img src="data:image/png;base64,{logo_data}" style="width:80px; height:80px; border-radius:50%; border: 2px solid #E63946; object-fit: cover;"></div>', unsafe_allow_html=True)
+            
+            st.markdown(f"<strong style='font-size:16px;'>{u['Nombre_Apellidos']}</strong>", unsafe_allow_html=True)
+            if len(roles_disponibles) > 1:
+                nuevo_rol = st.selectbox("Rol:", roles_disponibles, index=roles_disponibles.index(st.session_state.rol_activo), label_visibility="collapsed")
+                if nuevo_rol != st.session_state.rol_activo:
+                    st.session_state.rol_activo = nuevo_rol
+                    st.rerun()
+            else:
+                st.markdown(f"<span style='color:#E63946; font-size:14px; font-weight:bold;'>{st.session_state.rol_activo}</span>", unsafe_allow_html=True)
+            st.caption(f"📍 {u['Sede']}")
+            st.divider()
 
-        # VISTA: INICIO (TABLÓN)
-        if vista == "Inicio":
+            icono_chat = "🔴 Chat" if hay_mensaje else "💬 Chat"
+            menu = st.radio("NAVEGACIÓN", [
+                "📱 Inicio", 
+                "✅ Tareas", 
+                "📄 Mis Docs", 
+                "📚 Manuales", 
+                "❓ FAQs", 
+                icono_chat, 
+                "🏆 Quiz", 
+                "ℹ️ Guía"
+            ])
+            
+            st.divider()
+            st.info("⚠️ NO arrastres la pantalla hacia abajo para recargar o se cerrará tu sesión.")
+            if st.button("🔄 Actualizar Datos", type="primary", use_container_width=True):
+                st.rerun()
+                
+            st.write("")
+            if st.button("🚪 Salir", type="secondary", use_container_width=True): 
+                st.session_state.clear()
+                st.rerun()
+
+        # --- VISTAS DEL MENÚ ---
+        if "Inicio" in menu:
             st.markdown("<h3 style='color:#E63946; font-weight:800;'>📱 Tablón de Novedades</h3>", unsafe_allow_html=True)
             df = load("Avisos", 300)
             for _, r in df.sort_values(by=df.columns[0], ascending=False).iterrows():
@@ -498,13 +481,13 @@ try:
                 if img_url: st.image(img_url, use_container_width=True)
                 st.markdown(f'<div class="insta-footer"><b>{r.get("Titulo")}</b>: {r.get("Contenido")}<div class="insta-date">{r.get("Fecha_Publicacion")}</div></div></div>', unsafe_allow_html=True)
 
-        # VISTA: TAREAS
-        elif vista == "Tareas":
-            st.markdown("<h3 style='color:#E63946; font-weight:800;'>✅ Tareas</h3>", unsafe_allow_html=True)
+        elif "Tareas" in menu:
+            st.markdown("<h3 style='color:#E63946; font-weight:800;'>✅ Gestión de Tareas</h3>", unsafe_allow_html=True)
             df_t, df_u, df_com = load("Tareas", 5), load("Usuarios", 300), load("Comentarios_Tareas", 5)
             
             tabs_t = st.tabs(["📊 Dash", "⚡ Exprés", "🆕 Ptes", "🚧 Proc", "✅ Fin"])
             
+            # Pestaña 1: DASHBOARD
             with tabs_t[0]:
                 if 'Fecha_Creacion' not in df_t.columns: df_t['Fecha_Creacion'] = pd.NaT
                 if 'Fecha_Completada' not in df_t.columns: df_t['Fecha_Completada'] = pd.NaT
@@ -533,6 +516,7 @@ try:
                     st.markdown("**Por Estado**")
                     st.bar_chart(df_dash['Estado'].value_counts(), color="#E63946")
 
+            # Pestaña 2: PLANTILLAS RÁPIDAS
             with tabs_t[1]:
                 st.write("Lanza rutinas de equipo.")
                 def lanzar_tarea_masiva(titulo, desc, rol_destino):
@@ -550,13 +534,13 @@ try:
                     time.sleep(1); st.rerun()
 
                 with st.container(border=True):
-                    st.subheader("🧹 Cierre Cocina")
-                    if st.button("Lanzar a Cocineros", key="t_cc", type="primary"): lanzar_tarea_masiva("Cierre de Cocina", "Realizar cierre según protocolo.", "Cocinero")
+                    st.subheader("🧹 Cierre de Cocina")
+                    if st.button("Lanzar a Cocineros", key="t_cc", type="primary"): lanzar_tarea_masiva("Cierre de Cocina", "Realizar tareas de cierre según protocolo.", "Cocinero")
                 with st.container(border=True):
-                    st.subheader("☀️ Apertura Sala")
+                    st.subheader("☀️ Apertura de Sala")
                     if st.button("Lanzar a Camareros", key="t_as", type="primary"): lanzar_tarea_masiva("Apertura de Sala", "Apertura según protocolo.", "Camarero")
 
-                with st.expander("➕ Crear Manual"):
+                with st.expander("➕ Crear Tarea Manual"):
                     with st.form("nt", clear_on_submit=True):
                         tit = st.text_input("Título")
                         dsc = st.text_area("Descripción")
@@ -584,6 +568,7 @@ try:
                                 conn.update(worksheet="Tareas", data=pd.concat([df_t, pd.DataFrame(nuevas_t)], ignore_index=True))
                                 st.success("Guardado."); time.sleep(1); st.rerun()
 
+            # MOTOR DE RENDERIZADO DE TAREAS
             def draw(est_v, t_tab):
                 with t_tab:
                     f = df_t[df_t['Estado'] == est_v]
@@ -640,8 +625,7 @@ try:
                                     
             draw("Pendiente", tabs_t[2]); draw("En Proceso", tabs_t[3]); draw("Completada", tabs_t[4])
 
-        # VISTA: DOCUMENTOS
-        elif vista == "Docs":
+        elif "Docs" in menu:
             st.markdown("<h3 style='color:#E63946; font-weight:800;'>📄 Documentos</h3>", unsafe_allow_html=True)
             df_d = load("Documentos", 600)
             if is_admin:
@@ -672,8 +656,7 @@ try:
             else:
                 st.info("No hay documentos disponibles.")
 
-        # VISTA: CHAT
-        elif vista == "Chat":
+        elif "Chat" in menu:
             st.markdown("<h3 style='color:#E63946; font-weight:800;'>💬 Soporte</h3>", unsafe_allow_html=True)
             df_chat = load("Chat_Directo", 5)
             df_u_chat = load("Usuarios", 300)
@@ -693,109 +676,81 @@ try:
                 conn.update(worksheet="Chat_Directo", data=pd.concat([df_chat, nm], ignore_index=True))
                 enviar_aviso_email(tm, "Nuevo Mensaje Chat", f"Respuesta de Admin: {p}"); st.rerun()
 
-        # VISTA: MENÚ (CONFIGURACIÓN)
-        elif vista == "Menú":
-            st.markdown("<h3 style='color:#E63946; font-weight:800;'>⚙️ Menú</h3>", unsafe_allow_html=True)
+        elif "Quiz" in menu:
+            st.markdown(f"<h3 style='color:#E63946; font-weight:800;'>🏆 Quiz: {MES_ACTUAL_QUIZ}</h3>", unsafe_allow_html=True)
+            st.write("Pon a prueba tus conocimientos sobre los Protocolos y Normas. Tienes **1 solo intento**. ¡Compite por el primer puesto en el ranking!")
+            st.divider()
+
+            try: df_ranking = load("Ranking_Quiz", 0)
+            except Exception:
+                df_ranking = pd.DataFrame(columns=["Mes", "Email", "Nombre", "Rol", "Puntuacion", "Fecha"])
+                st.error("Ranking no creado en GSheets.")
+                st.stop()
+
+            ha_participado = not df_ranking[(df_ranking['Email'] == u['Email']) & (df_ranking['Mes'] == MES_ACTUAL_QUIZ)].empty
+
+            if ha_participado:
+                st.success("✅ Ya has participado este mes.")
+                mi_nota = df_ranking[(df_ranking['Email'] == u['Email']) & (df_ranking['Mes'] == MES_ACTUAL_QUIZ)]['Puntuacion'].values[0]
+                st.metric("Tu Puntuación", f"{mi_nota} / 20")
+                st.divider()
+                st.subheader("📊 Ranking del Mes")
+                df_mes = df_ranking[df_ranking['Mes'] == MES_ACTUAL_QUIZ].copy()
+                df_mes['Puntuacion'] = pd.to_numeric(df_mes['Puntuacion'])
+                df_ordenado = df_mes.sort_values(by=['Puntuacion', 'Fecha'], ascending=[False, True]).reset_index(drop=True)
+                for index, row in df_ordenado.iterrows():
+                    pos = index + 1
+                    medalla = "🥇" if pos == 1 else "🥈" if pos == 2 else "🥉" if pos == 3 else f"{pos}º"
+                    st.markdown(f'<div class="rank-card"><div class="rank-pos">{medalla}</div><div class="rank-name">{row["Nombre"]} <span style="font-size:12px; color:gray;">({row["Rol"]})</span></div><div class="rank-score">{row["Puntuacion"]} pts</div></div>', unsafe_allow_html=True)
+            else:
+                diccionario_preguntas = QUIZ_COCINA if "Cocine" in st.session_state.rol_activo else QUIZ_SALA
+                tipo_examen = "Cocina" if "Cocine" in st.session_state.rol_activo else "Sala"
+                st.info(f"Examen de: **{tipo_examen}**.")
+                with st.form("quiz_form"):
+                    respuestas_usuario = {}
+                    for i, (pregunta, (opciones, correcta_idx)) in enumerate(diccionario_preguntas.items()):
+                        pregunta_limpia = re.sub(r'^\d+\.\s*', '', pregunta)
+                        st.markdown(f"**{i+1}. {pregunta_limpia}**")
+                        respuestas_usuario[i] = st.radio("Opciones", opciones, key=f"q_{i}", index=None, label_visibility="collapsed")
+                        st.write("")
+                    
+                    if st.form_submit_button("Enviar Mis Respuestas", type="primary", use_container_width=True):
+                        if None in respuestas_usuario.values(): st.error("⛔ Responde todas las preguntas.")
+                        else:
+                            puntuacion = 0
+                            for i, (pregunta, (opciones, correcta_idx)) in enumerate(diccionario_preguntas.items()):
+                                if respuestas_usuario[i] == opciones[correcta_idx]: puntuacion += 1
+                            nuevo_registro = pd.DataFrame([{"Mes": MES_ACTUAL_QUIZ, "Email": u['Email'], "Nombre": u['Nombre_Apellidos'], "Rol": st.session_state.rol_activo, "Puntuacion": puntuacion, "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}])
+                            conn.update(worksheet="Ranking_Quiz", data=pd.concat([df_ranking, nuevo_registro], ignore_index=True))
+                            st.success("¡Enviado!"); time.sleep(1); st.rerun()
             
-            roles_disponibles = [r.strip() for r in str(u.get('Roles', '')).split(',') if r.strip()]
-            if len(roles_disponibles) > 1:
-                nuevo_rol = st.selectbox("👤 Tu Rol Activo:", roles_disponibles, index=roles_disponibles.index(st.session_state.rol_activo))
-                if nuevo_rol != st.session_state.rol_activo:
-                    st.session_state.rol_activo = nuevo_rol
-                    st.rerun()
-
-            tabs_menu = st.tabs(["🏆 Quiz", "📚 Libros", "❓ FAQs", "ℹ️ Info"])
+        elif "Manuales" in menu:
+            st.markdown("<h3 style='color:#E63946; font-weight:800;'>📚 Manuales</h3>", unsafe_allow_html=True)
+            df_m = load("Manuales", 600)
+            cats = df_m['Categoria'].unique()
+            for c in cats:
+                with st.expander(f"📂 {c}"):
+                    for _, r in df_m[df_m['Categoria'] == c].iterrows():
+                        st.write(f"**{r['Nombre_Manual']}**")
+                        if st.button("Ver", key=f"m_{r['Nombre_Manual']}", type="secondary"): st.components.v1.iframe(f"https://drive.google.com/file/d/{extraer_id_drive(r['Enlace Drive'])}/preview", height=500)
             
-            with tabs_menu[0]:
-                st.subheader(f"Quiz Mensual: {MES_ACTUAL_QUIZ}")
-                try: df_ranking = load("Ranking_Quiz", 0)
-                except Exception:
-                    df_ranking = pd.DataFrame(columns=["Mes", "Email", "Nombre", "Rol", "Puntuacion", "Fecha"])
-                    st.error("Ranking no creado en GSheets.")
-                    st.stop()
-
-                ha_participado = not df_ranking[(df_ranking['Email'] == u['Email']) & (df_ranking['Mes'] == MES_ACTUAL_QUIZ)].empty
-
-                if ha_participado:
-                    st.success("✅ Ya has participado este mes.")
-                    mi_nota = df_ranking[(df_ranking['Email'] == u['Email']) & (df_ranking['Mes'] == MES_ACTUAL_QUIZ)]['Puntuacion'].values[0]
-                    st.metric("Tu Puntuación", f"{mi_nota} / 20")
-                    st.divider()
-                    st.subheader("📊 Ranking del Mes")
-                    df_mes = df_ranking[df_ranking['Mes'] == MES_ACTUAL_QUIZ].copy()
-                    df_mes['Puntuacion'] = pd.to_numeric(df_mes['Puntuacion'])
-                    df_ordenado = df_mes.sort_values(by=['Puntuacion', 'Fecha'], ascending=[False, True]).reset_index(drop=True)
-                    for index, row in df_ordenado.iterrows():
-                        pos = index + 1
-                        medalla = "🥇" if pos == 1 else "🥈" if pos == 2 else "🥉" if pos == 3 else f"{pos}º"
-                        st.markdown(f'<div class="rank-card"><div class="rank-pos">{medalla}</div><div class="rank-name">{row["Nombre"]} <span style="font-size:12px; color:gray;">({row["Rol"]})</span></div><div class="rank-score">{row["Puntuacion"]} pts</div></div>', unsafe_allow_html=True)
-                else:
-                    diccionario_preguntas = QUIZ_COCINA if "Cocine" in st.session_state.rol_activo else QUIZ_SALA
-                    tipo_examen = "Cocina" if "Cocine" in st.session_state.rol_activo else "Sala"
-                    st.info(f"Examen de: **{tipo_examen}**.")
-                    with st.form("quiz_form"):
-                        respuestas_usuario = {}
-                        for i, (pregunta, (opciones, correcta_idx)) in enumerate(diccionario_preguntas.items()):
-                            pregunta_limpia = re.sub(r'^\d+\.\s*', '', pregunta)
-                            st.markdown(f"**{i+1}. {pregunta_limpia}**")
-                            respuestas_usuario[i] = st.radio("Opciones", opciones, key=f"q_{i}", index=None, label_visibility="collapsed")
-                            st.write("")
+        elif "FAQs" in menu:
+            st.markdown("<h3 style='color:#E63946; font-weight:800;'>❓ FAQs</h3>", unsafe_allow_html=True)
+            df_f = load("FAQ", 600)
+            cats = df_f['Categoria'].unique()
+            for c in cats:
+                with st.expander(f"❓ {c}"):
+                    for _, r in df_f[df_f['Categoria'] == c].iterrows():
+                        with st.expander(r['Pregunta']): st.write(r['Respuesta'])
                         
-                        if st.form_submit_button("Enviar Mis Respuestas", type="primary", use_container_width=True):
-                            if None in respuestas_usuario.values(): st.error("⛔ Responde todas las preguntas.")
-                            else:
-                                puntuacion = 0
-                                for i, (pregunta, (opciones, correcta_idx)) in enumerate(diccionario_preguntas.items()):
-                                    if respuestas_usuario[i] == opciones[correcta_idx]: puntuacion += 1
-                                nuevo_registro = pd.DataFrame([{"Mes": MES_ACTUAL_QUIZ, "Email": u['Email'], "Nombre": u['Nombre_Apellidos'], "Rol": st.session_state.rol_activo, "Puntuacion": puntuacion, "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}])
-                                conn.update(worksheet="Ranking_Quiz", data=pd.concat([df_ranking, nuevo_registro], ignore_index=True))
-                                st.success("¡Enviado!"); time.sleep(1); st.rerun()
-            
-            with tabs_menu[1]:
-                df_m = load("Manuales", 600)
-                cats = df_m['Categoria'].unique()
-                for c in cats:
-                    with st.expander(f"📂 {c}"):
-                        for _, r in df_m[df_m['Categoria'] == c].iterrows():
-                            st.write(f"**{r['Nombre_Manual']}**")
-                            if st.button("Ver", key=f"m_{r['Nombre_Manual']}", type="secondary"): st.components.v1.iframe(f"https://drive.google.com/file/d/{extraer_id_drive(r['Enlace Drive'])}/preview", height=500)
-            
-            with tabs_menu[2]:
-                df_f = load("FAQ", 600)
-                cats = df_f['Categoria'].unique()
-                for c in cats:
-                    with st.expander(f"❓ {c}"):
-                        for _, r in df_f[df_f['Categoria'] == c].iterrows():
-                            with st.expander(r['Pregunta']): st.write(r['Respuesta'])
-                            
-            with tabs_menu[3]:
-                st.write("Esta herramienta es tu centro de mando.")
-                with st.expander("📱 Tablón y 📄 Docs"): st.write("Noticias generales y acceso a tus nóminas.")
-                with st.expander("✅ Tareas (Evidencia)"): st.write("🟢 Verde: En plazo | 🟠 Naranja: Hoy | 🔴 Rojo: Caducada. \n📸 **Foto Obligatoria:** Si la tarea tiene el aviso, sube foto al chat.")
-
-            st.write("")
-            if st.button("🚪 Cerrar Sesión", type="secondary", use_container_width=True): 
-                st.session_state.clear()
-                st.rerun()
-
-        # --- BARRA INFERIOR DE NAVEGACIÓN FIJA (BOTTOM NAV) ---
-        def cambiar_vista(nueva_vista):
-            st.session_state.app_section = nueva_vista
-
-        nav_container = st.container()
-        with nav_container:
-            st.markdown('<div id="bottom-nav-marker"></div>', unsafe_allow_html=True)
-            c1, c2, c3, c4, c5 = st.columns(5)
-            
-            with c1: st.button("📱\nInicio", key="nav_inicio", on_click=cambiar_vista, args=("Inicio",), use_container_width=True)
-            with c2: st.button("✅\nTareas", key="nav_tareas", on_click=cambiar_vista, args=("Tareas",), use_container_width=True)
-            with c3: st.button("📄\nDocs", key="nav_docs", on_click=cambiar_vista, args=("Docs",), use_container_width=True)
-            with c4:
-                icono_chat = "🔴\nChat" if hay_mensaje else "💬\nChat"
-                st.button(icono_chat, key="nav_chat", on_click=cambiar_vista, args=("Chat",), use_container_width=True)
-            with c5: st.button("⚙️\nMenú", key="nav_menu", on_click=cambiar_vista, args=("Menú",), use_container_width=True)
+        elif "Guía" in menu:
+            st.markdown("<h3 style='color:#E63946; font-weight:800;'>ℹ️ Guía de Uso</h3>", unsafe_allow_html=True)
+            st.write("Esta herramienta es tu centro de mando.")
+            with st.expander("📱 Tablón y 📄 Docs"): st.write("Noticias generales y acceso a tus nóminas.")
+            with st.expander("✅ Tareas (Evidencia)"): st.write("🟢 Verde: En plazo | 🟠 Naranja: Hoy | 🔴 Rojo: Caducada. \n📸 **Foto Obligatoria:** Si la tarea tiene el aviso, sube foto al chat.")
+            with st.expander("🔄 ¿Por qué se me cierra la sesión?"): st.write("Nunca arrastres la pantalla hacia abajo para recargar o la App se reiniciará. Usa el botón 'Actualizar Datos' del menú.")
 
 except Exception as e:
     reportar_error_a_mario(e)
-    st.error("⚠️ Error técnico reportado a Mario.")
+    st.error("⚠️ Error técnico reportado a Admin.")
     if st.button("Recargar", type="primary"): st.rerun()
