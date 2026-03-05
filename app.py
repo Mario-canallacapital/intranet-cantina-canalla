@@ -1,6 +1,6 @@
-# --- VERSIÓN v40.0 (CORPORATE MOBILE EDITION) ---
+# --- VERSIÓN v41.0 (CORPORATE WEB EDITION) ---
 # Actualizado: 05/03/2026 
-# Novedades: Interfaz móvil nativa (Bottom Nav), Estilo Web Corporativa (Negro/Oro), Fix botones invisibles.
+# Novedades: Modo Light Corporativo, Fix Scroll bloqueado, Menú Inferior XL.
 
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
@@ -20,7 +20,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Intranet Cantina Canalla", layout="wide", page_icon="🐓")
+st.set_page_config(page_title="Intranet Cantina Canalla", layout="wide", page_icon="🌮")
 
 # --- CONFIGURACIÓN CORREO ---
 EMAIL_GENERICO = "avisosapp.cantinacanalla@gmail.com" 
@@ -192,90 +192,100 @@ def reportar_error_a_mario(e):
     error_detallado = traceback.format_exc()
     ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     user = st.session_state.get('user', {}).get('Nombre_Apellidos', 'N/A')
-    cuerpo = f"🚨 ERROR v40.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
+    cuerpo = f"🚨 ERROR v41.0 🚨\n\nFecha: {ahora}\nUsuario: {user}\n\nTraceback:\n{error_detallado}"
     enviar_aviso_email("mario@canallacapital.com", "🚨 ERROR APP CANTINA", cuerpo)
 
 # --- BLOQUE PRINCIPAL DE LA APP ---
 try:
-    # --- 🎨 CSS: ESTILO CORPORATIVO CANTINA CANALLA + FIX BOTONES MÓVIL ---
+    # --- 🎨 CSS: ESTILO WEB CORPORATIVO (LIGHT) + FIX SCROLL + FIX MENÚ ---
     st.markdown("""
         <style>
-        /* 1. Fondo de la App y color de texto general */
-        .stApp { 
-            background-color: #0A0A0A !important; 
-            color: #EDEDED !important; 
-            padding-bottom: 90px !important; /* Espacio para que el menú de abajo no tape nada */
+        /* 1. Fondo de la App, Colores Corporativos y FIX SCROLL */
+        .stApp, [data-testid="stAppViewContainer"] { 
+            background-color: #F9F9F9 !important; 
+        }
+        /* FIX SCROLL: Asegura espacio al fondo para que el menú no tape nada */
+        .main .block-container {
+            padding-bottom: 120px !important; 
         }
         
-        /* 2. Ocultar menús por defecto de Streamlit (Hamburguesa y Footer) */
+        /* Textos oscuros para modo Light */
+        h1, h2, h3, h4, h5, h6, p, span, label, li, .stMarkdown { 
+            color: #222222 !important; 
+        }
+        
+        /* 2. Ocultar menús por defecto de Streamlit */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header[data-testid="stHeader"] {visibility: hidden;}
         [data-testid="stSidebar"] {display: none !important;}
         
-        /* 3. Solución de Botones Invisibles y Estilo Dorado Cantina */
+        /* 3. Botones y Cajas (Inputs) */
         button[data-testid="stBaseButton-primary"] {
-            background-color: #D4AF37 !important; /* Dorado Cantina */
-            color: #000000 !important;
-            font-weight: 800 !important;
+            background-color: #E63946 !important; /* Rojo Cantina */
+            color: #FFFFFF !important;
+            font-weight: bold !important;
             border: none !important;
             border-radius: 8px !important;
+            box-shadow: 0 2px 4px rgba(230, 57, 70, 0.3) !important;
         }
+        button[data-testid="stBaseButton-primary"] p { color: #FFFFFF !important; }
+        
         button[data-testid="stBaseButton-secondary"] {
-            background-color: #1A1A1A !important;
-            color: #D4AF37 !important; /* Texto Dorado */
-            border: 1px solid #D4AF37 !important;
+            background-color: #FFFFFF !important;
+            color: #222222 !important;
+            border: 1px solid #CCCCCC !important;
             border-radius: 8px !important;
             font-weight: 600 !important;
         }
-        /* Cajas de texto e inputs para que se vean bien */
-        div[data-baseweb="input"] > div, div[data-baseweb="textarea"] > div, div[data-baseweb="select"] > div {
-            background-color: #1A1A1A !important;
-            border: 1px solid #333333 !important;
-            border-radius: 8px !important;
-            color: white !important;
-        }
+        button[data-testid="stBaseButton-secondary"] p { color: #222222 !important; }
         
-        /* 4. Estilo de Cajas y Expanders */
-        .insta-card { background-color: #141414 !important; border-radius: 12px; border: 1px solid #333; margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto; overflow: hidden; }
-        .insta-header { padding: 12px; border-bottom: 1px solid #333; font-weight: 700; color: #D4AF37 !important; }
+        /* Forzar inputs y desplegables a ser blancos con letra oscura */
+        div[data-baseweb="input"] > div, div[data-baseweb="textarea"] > div, div[data-baseweb="select"] > div {
+            background-color: #FFFFFF !important;
+            border: 1px solid #DDDDDD !important;
+            border-radius: 8px !important;
+        }
+        div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea { color: #222222 !important; }
+        
+        /* 4. Estilo de Cajas, Tareas y Tablón */
+        .insta-card { background-color: #FFFFFF !important; border-radius: 12px; border: 1px solid #EAEAEA; margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .insta-header { padding: 12px; border-bottom: 1px solid #EAEAEA; font-weight: 700; color: #E63946 !important; }
         .insta-footer { padding: 12px; }
-        .insta-date { font-size: 11px; color: gray; margin-top: 5px;}
+        .insta-date { font-size: 11px; color: #888888; margin-top: 5px;}
         
         .bubble { padding: 10px 15px; border-radius: 20px; margin-bottom: 10px; max-width: 75%; font-size: 14px; }
-        .bubble-user { background-color: #D4AF37 !important; color: black !important; margin-left: auto; border-bottom-right-radius: 4px; font-weight: 500;}
-        .bubble-admin { background-color: #222222 !important; color: white !important; margin-right: auto; border-bottom-left-radius: 4px; }
+        .bubble-user { background-color: #E63946 !important; color: white !important; margin-left: auto; border-bottom-right-radius: 4px; font-weight: 500;}
+        .bubble-admin { background-color: #EAEAEA !important; color: #222222 !important; margin-right: auto; border-bottom-left-radius: 4px; }
         
-        .stExpander { background-color: #141414 !important; border: 1px solid #333 !important; border-radius: 8px !important; }
-        h1, h2, h3, p, span, label, .stMarkdown { color: #EDEDED !important; }
+        .stExpander { background-color: #FFFFFF !important; border: 1px solid #E0E0E0 !important; border-radius: 8px !important; }
+        div[data-testid="stExpander"] details summary p { font-weight: 600; color: #111111 !important;}
         
-        .status-expired { color: #ff4b4b !important; font-weight: bold; }
-        .status-ok { color: #00ff00 !important; }
-        .req-foto { color: #000000 !important; font-size: 11px; font-weight: bold; background: #D4AF37; padding: 4px 8px; border-radius: 6px;}
+        .status-expired { color: #D32F2F !important; font-weight: bold; }
+        .status-ok { color: #2A9D8F !important; font-weight: bold; }
+        .req-foto { color: #111111 !important; font-size: 12px; font-weight: bold; background: #FFD166; padding: 4px 8px; border-radius: 6px;}
         
-        .rank-card { background-color: #141414; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #D4AF37; display: flex; justify-content: space-between; align-items: center;}
-        .rank-pos { font-size: 24px; font-weight: bold; color: #D4AF37; width: 40px;}
-        .rank-name { font-size: 18px; font-weight: bold; flex-grow: 1; }
-        .rank-score { font-size: 20px; font-weight: bold; color: #00ff00; }
+        .rank-card { background-color: #FFFFFF; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #E63946; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);}
+        .rank-pos { font-size: 24px; font-weight: bold; color: #E63946; width: 40px;}
+        .rank-name { font-size: 18px; font-weight: bold; flex-grow: 1; color:#222222;}
+        .rank-score { font-size: 20px; font-weight: bold; color: #2A9D8F; }
 
-        /* 5. EL TRUCO DEL MENÚ INFERIOR (BOTTOM NAV) */
+        /* 5. EL MENÚ INFERIOR (BOTTOM NAV) AMPLIADO Y FIJADO */
         div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            background-color: #0A0A0A;
+            background-color: #FFFFFF;
             z-index: 99999;
-            border-top: 1px solid #222222;
-            padding: 10px 5px 25px 5px; /* Espacio extra abajo para los iPhone */
-            box-shadow: 0px -4px 10px rgba(0,0,0,0.6);
+            border-top: 1px solid #EAEAEA;
+            padding: 8px 5px 25px 5px; /* Espacio extra inferior para la barra de iOS */
+            box-shadow: 0px -4px 15px rgba(0,0,0,0.06);
         }
-        /* Convertir los botones de ese bloque en iconos */
         div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) button {
             background-color: transparent !important;
             border: none !important;
             box-shadow: none !important;
-            color: #888888 !important;
             padding: 0 !important;
             height: auto !important;
             display: flex;
@@ -283,53 +293,23 @@ try:
             justify-content: center;
             align-items: center;
         }
-        /* Efecto al pulsar/hover en el menu */
-        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) button:hover,
-        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) button:active {
-            color: #D4AF37 !important;
-        }
+        /* LETRAS MÁS GRANDES EN EL MENÚ INFERIOR */
         div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) p {
-            font-size: 11px !important;
-            margin-top: 4px;
-            font-weight: 600;
+            font-size: 15px !important; 
+            line-height: 1.3 !important;
+            margin-top: 5px;
+            font-weight: 800 !important;
+            color: #666666 !important;
         }
-        /* Eliminar espacio entre columnas del nav */
+        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) button:hover p,
+        div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) button:active p {
+            color: #E63946 !important; /* Rojo al pulsar */
+        }
         div[data-testid="stVerticalBlock"]:has(#bottom-nav-marker) > div > div {
             gap: 0 !important;
         }
         </style>
     """, unsafe_allow_html=True)
-
-    # --- FUNCIONES ---
-    def cargar_logo_base64():
-        try:
-            with open("armband-PhotoRoom.png-PhotoRoom.png", "rb") as f:
-                return base64.b64encode(f.read()).decode()
-        except: return None
-
-    def comprimir_foto(upload_file):
-        img = Image.open(upload_file)
-        if img.mode in ("RGBA", "P"): img = img.convert("RGB")
-        img.thumbnail((400, 400))
-        buffer = BytesIO()
-        img.save(buffer, format="JPEG", quality=30)
-        return f"data:image/jpeg;base64,{base64.b64encode(buffer.getvalue()).decode()}"
-
-    def comparten_sede(s1, s2):
-        if pd.isna(s1) or pd.isna(s2): return False
-        l1 = set(x.strip() for x in str(s1).split(',') if x.strip())
-        l2 = set(x.strip() for x in str(s2).split(',') if x.strip())
-        return not l1.isdisjoint(l2)
-
-    def extraer_id_drive(url):
-        if not isinstance(url, str) or pd.isna(url): return None
-        match = re.search(r'[-\w]{25,}', url)
-        return match.group(0) if match else None
-
-    def procesar_img_drive(url):
-        fid = extraer_id_drive(url)
-        if not fid: return None
-        return f"https://lh3.googleusercontent.com/d/{fid}"
 
     # --- CONEXIÓN A GOOGLE SHEETS ---
     conn = st.connection("gsheets", type=GSheetsConnection)
@@ -349,14 +329,13 @@ try:
     # PANTALLA 1: LOGIN
     # ==========================================
     if not st.session_state.auth:
-        st.write("") # Espaciador superior
-        st.write("")
+        st.write("") # Espaciador
         col1, col2, col3 = st.columns([1,1.5,1])
         with col2:
             logo = cargar_logo_base64()
             st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-            if logo: st.markdown(f'<img src="data:image/png;base64,{logo}" class="circular-logo" style="border-color: #D4AF37;">', unsafe_allow_html=True)
-            st.markdown('<h2 style="text-align: center; color: #D4AF37 !important;">Intranet Cantina Canalla</h2></div>', unsafe_allow_html=True)
+            if logo: st.markdown(f'<img src="data:image/png;base64,{logo}" class="circular-logo" style="border-color: #E63946;">', unsafe_allow_html=True)
+            st.markdown('<h2 style="text-align: center; color: #E63946 !important; font-weight:800;">Intranet Cantina</h2></div>', unsafe_allow_html=True)
             
             if st.session_state.page == "login":
                 with st.form("login_form"):
@@ -373,13 +352,12 @@ try:
                             else:
                                 st.session_state.user = ud
                                 st.session_state.auth = True
-                                # Por defecto el rol activo es el primero de su lista
                                 roles_list = [r.strip() for r in str(ud.get('Roles', '')).split(',') if r.strip()]
                                 st.session_state.rol_activo = roles_list[0] if roles_list else "Empleado"
                                 st.session_state.page = "change_password" if str(ud.get('Primer_Acceso')).strip().upper() == "SÍ" else "notifications"
                                 st.rerun()
                         else: st.error("❌ Credenciales incorrectas.")
-                if st.button("Olvidé mi contraseña"): st.session_state.page = "forgot_step1"; st.rerun()
+                if st.button("Olvidé mi contraseña", type="secondary"): st.session_state.page = "forgot_step1"; st.rerun()
 
             elif "forgot" in st.session_state.page:
                 if st.session_state.page == "forgot_step1":
@@ -392,7 +370,7 @@ try:
                             enviar_aviso_email(em, "Código Recuperación", f"Tu código: {c}")
                             st.session_state.page = "forgot_step2"; st.rerun()
                         else: st.error("No existe.")
-                    if st.button("Volver"): st.session_state.page = "login"; st.rerun()
+                    if st.button("Volver", type="secondary"): st.session_state.page = "login"; st.rerun()
                 elif st.session_state.page == "forgot_step2":
                     uc = st.text_input("Código")
                     if st.button("Validar", type="primary", use_container_width=True):
@@ -425,7 +403,7 @@ try:
     # ==========================================
     elif st.session_state.page == "notifications":
         u = st.session_state.user
-        st.markdown(f"<h1 style='color: #D4AF37 !important;'>👋 Hola, {u['Nombre_Apellidos']}</h1>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='color: #E63946 !important;'>👋 Hola, {u['Nombre_Apellidos']}</h1>", unsafe_allow_html=True)
         try: last_log = pd.to_datetime(u.get('Ultima_Conexion'), format="%Y-%m-%d %H:%M:%S")
         except: last_log = datetime(2000,1,1)
         alertas = []
@@ -446,26 +424,24 @@ try:
             conn.update(worksheet="Usuarios", data=df); st.session_state.page = "main"; st.rerun()
 
     # ==========================================
-    # PANTALLA 4: APP PRINCIPAL (NUEVA UI SIN LATERAL)
+    # PANTALLA 4: APP PRINCIPAL (INTERFAZ TIPO APP MÓVIL)
     # ==========================================
     elif st.session_state.page == "main":
         u = st.session_state.user
         is_admin = st.session_state.rol_activo == "Admin"
         is_encargado = st.session_state.rol_activo == "Encargado"
 
-        # ---------------------------------------------------------
-        # CABECERA SUPERIOR (TOP BAR)
-        # ---------------------------------------------------------
+        # --- CABECERA SUPERIOR ---
         col_logo, col_info = st.columns([1, 4])
         with col_logo:
             logo_data = cargar_logo_base64()
             if logo_data: 
-                st.markdown(f'<img src="data:image/png;base64,{logo_data}" style="width:55px; height:55px; border-radius:50%; border: 2px solid #D4AF37; object-fit: cover;">', unsafe_allow_html=True)
+                st.markdown(f'<img src="data:image/png;base64,{logo_data}" style="width:55px; height:55px; border-radius:50%; border: 2px solid #E63946; object-fit: cover;">', unsafe_allow_html=True)
         with col_info:
-            st.markdown(f"<div style='margin-top: 5px; line-height: 1.2;'><strong style='font-size: 18px;'>{u['Nombre_Apellidos']}</strong><br><span style='color:#D4AF37; font-size:14px;'>{st.session_state.rol_activo}</span> <span style='color:gray; font-size:12px;'>📍 {u['Sede']}</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='margin-top: 5px; line-height: 1.2;'><strong style='font-size: 18px; color:#222;'>{u['Nombre_Apellidos']}</strong><br><span style='color:#E63946; font-size:14px; font-weight:bold;'>{st.session_state.rol_activo}</span> <span style='color:gray; font-size:12px;'>📍 {u['Sede']}</span></div>", unsafe_allow_html=True)
         st.divider()
 
-        # Check Chat Dot para el menú inferior
+        # Check notificaciones de chat
         df_c_check = load("Chat_Directo", 5)
         hay_mensaje = False
         try:
@@ -476,14 +452,12 @@ try:
                     hay_mensaje = True
         except: pass
 
-        # ---------------------------------------------------------
-        # CONTROLADOR DE VISTAS (ENRUTADOR)
-        # ---------------------------------------------------------
+        # --- CONTROLADOR DE VISTAS ---
         vista = st.session_state.app_section
 
         # VISTA: INICIO (TABLÓN)
         if vista == "Inicio":
-            st.markdown("<h3 style='color:#D4AF37;'>📱 Tablón de Novedades</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color:#E63946; font-weight:800;'>📱 Tablón de Novedades</h3>", unsafe_allow_html=True)
             df = load("Avisos", 300)
             for _, r in df.sort_values(by=df.columns[0], ascending=False).iterrows():
                 img_url = procesar_img_drive(r.get('Enlace_Imagen'))
@@ -495,16 +469,14 @@ try:
 
         # VISTA: TAREAS
         elif vista == "Tareas":
-            st.markdown("<h3 style='color:#D4AF37;'>✅ Gestión de Tareas</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color:#E63946; font-weight:800;'>✅ Tareas</h3>", unsafe_allow_html=True)
             df_t, df_u, df_com = load("Tareas", 5), load("Usuarios", 300), load("Comentarios_Tareas", 5)
             
-            tabs_t = st.tabs(["📊 Dashboard", "⚡ Plantillas Rápidas", "🆕 Ptes", "🚧 En Proceso", "✅ Fin"])
+            tabs_t = st.tabs(["📊 Dash", "⚡ Exprés", "🆕 Ptes", "🚧 Proc", "✅ Fin"])
             
-            # Pestaña 1: DASHBOARD
             with tabs_t[0]:
                 if 'Fecha_Creacion' not in df_t.columns: df_t['Fecha_Creacion'] = pd.NaT
                 if 'Fecha_Completada' not in df_t.columns: df_t['Fecha_Completada'] = pd.NaT
-                
                 if not is_admin and not is_encargado: df_dash = df_t[(df_t['Asignado_A'] == u['Email']) | (df_t['Creado_Por'] == u['Nombre_Apellidos'])].copy()
                 else: df_dash = df_t.copy()
 
@@ -512,7 +484,7 @@ try:
                 df_dash['Nombre_Empleado'] = df_dash['Asignado_A'].map(map_email_nombre).fillna(df_dash['Asignado_A'])
 
                 lista_emps = ["Todos"] + sorted(df_dash['Nombre_Empleado'].dropna().unique().tolist())
-                filtro_emp = st.selectbox("👤 Filtrar por Empleado", lista_emps)
+                filtro_emp = st.selectbox("👤 Empleado", lista_emps)
                 if filtro_emp != "Todos": df_dash = df_dash[df_dash['Nombre_Empleado'] == filtro_emp]
                 
                 st.divider()
@@ -522,17 +494,16 @@ try:
                 pend = len(df_dash[df_dash['Estado'] == 'Pendiente'])
                 
                 c1.metric("📋 Total", tot)
-                c2.metric("✅ Completas", comp)
+                c2.metric("✅ Fin", comp)
                 c3.metric("🆕 Ptes", pend)
 
                 if tot > 0:
                     st.write("")
-                    st.markdown("**Distribución por Estado**")
-                    st.bar_chart(df_dash['Estado'].value_counts(), color="#D4AF37")
+                    st.markdown("**Por Estado**")
+                    st.bar_chart(df_dash['Estado'].value_counts(), color="#E63946")
 
-            # Pestaña 2: PLANTILLAS RÁPIDAS
             with tabs_t[1]:
-                st.write("Lanza rutinas de equipo al instante.")
+                st.write("Lanza rutinas de equipo.")
                 def lanzar_tarea_masiva(titulo, desc, rol_destino):
                     usuarios_destino = df_u[df_u['Roles'].str.contains(rol_destino, na=False, case=False) & df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
                     if usuarios_destino.empty:
@@ -544,25 +515,25 @@ try:
                     for _, empleado in usuarios_destino.iterrows():
                         nuevas_tareas.append({"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": titulo, "Descripción": desc_foto, "Asignado_A": empleado['Email'], "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": hoy_str, "Fecha_Creacion": hoy_str, "Fecha_Completada": ""})
                     conn.update(worksheet="Tareas", data=pd.concat([df_t, pd.DataFrame(nuevas_tareas)], ignore_index=True))
-                    st.success(f"🚀 Tarea enviada a {len(nuevas_tareas)} empleados.")
+                    st.success(f"🚀 Enviada a {len(nuevas_tareas)} empleados.")
                     time.sleep(1); st.rerun()
 
                 with st.container(border=True):
-                    st.subheader("🧹 Cierre de Cocina")
-                    if st.button("Lanzar a Cocineros", key="t_cierre_cocina"): lanzar_tarea_masiva("Cierre de Cocina", "Realizar tareas de cierre según protocolo (Campana, Baño María, Etiquetado).", "Cocinero")
+                    st.subheader("🧹 Cierre Cocina")
+                    if st.button("Lanzar a Cocineros", key="t_cc", type="primary"): lanzar_tarea_masiva("Cierre de Cocina", "Realizar cierre según protocolo.", "Cocinero")
                 with st.container(border=True):
-                    st.subheader("☀️ Apertura de Sala")
-                    if st.button("Lanzar a Camareros", key="t_aper_sala"): lanzar_tarea_masiva("Apertura de Sala", "Realizar tareas de apertura (Luces, TPV, Purgar, Repasar mesas).", "Camarero")
+                    st.subheader("☀️ Apertura Sala")
+                    if st.button("Lanzar a Camareros", key="t_as", type="primary"): lanzar_tarea_masiva("Apertura de Sala", "Apertura según protocolo.", "Camarero")
 
-                with st.expander("➕ Crear Tarea Personalizada"):
+                with st.expander("➕ Crear Manual"):
                     with st.form("nt", clear_on_submit=True):
                         tit = st.text_input("Título")
                         dsc = st.text_area("Descripción")
                         fl = st.date_input("Límite", min_value=date.today())
                         pos_u = df_u[df_u.apply(lambda r: comparten_sede(u['Sede'], r['Sede']), axis=1)]
                         lp = pos_u['Nombre_Apellidos'].tolist()
-                        nd = st.selectbox("Asignar a:", ["Sin usuarios", "📣 Todos los Camareros", "📣 Todos los Cocineros"] + lp)
-                        requiere_foto = st.checkbox("📸 Requiere evidencia visual")
+                        nd = st.selectbox("Asignar:", ["Sin usuarios", "📣 Difusión Camareros", "📣 Difusión Cocineros"] + lp)
+                        requiere_foto = st.checkbox("📸 Exigir foto al empleado")
                         
                         if st.form_submit_button("Crear Tarea", type="primary"):
                             if not tit.strip() or not dsc.strip() or nd == "Sin usuarios" or not nd:
@@ -571,7 +542,7 @@ try:
                                 final_desc = dsc + " [REQ_FOTO]" if requiere_foto else dsc
                                 nuevas_t = []
                                 hoy_str = str(date.today())
-                                if "Todos los " in nd:
+                                if "Difusión" in nd:
                                     rol_buscado = "Camarero" if "Camareros" in nd else "Cocinero"
                                     empleados_dif = pos_u[pos_u['Roles'].str.contains(rol_buscado, na=False, case=False)]
                                     for _, emp in empleados_dif.iterrows():
@@ -580,9 +551,8 @@ try:
                                     em_d = df_u[df_u['Nombre_Apellidos']==nd]['Email'].values[0]
                                     nuevas_t.append({"ID_Tarea": str(uuid.uuid4())[:8], "Titulo_Tarea": tit, "Descripción": final_desc, "Asignado_A": em_d, "Creado_Por": u['Nombre_Apellidos'], "Sede": u['Sede'], "Estado": "Pendiente", "Fecha_Limite": str(fl), "Fecha_Creacion": hoy_str, "Fecha_Completada": ""})
                                 conn.update(worksheet="Tareas", data=pd.concat([df_t, pd.DataFrame(nuevas_t)], ignore_index=True))
-                                st.success("Tarea(s) creada(s)."); time.sleep(1); st.rerun()
+                                st.success("Guardado."); time.sleep(1); st.rerun()
 
-            # RENDERIZADOR DE TAREAS PENDIENTES, EN PROCESO Y COMPLETADAS
             def draw(est_v, t_tab):
                 with t_tab:
                     f = df_t[df_t['Estado'] == est_v]
@@ -641,7 +611,7 @@ try:
 
         # VISTA: DOCUMENTOS
         elif vista == "Docs":
-            st.markdown("<h3 style='color:#D4AF37;'>📄 Documentos</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color:#E63946; font-weight:800;'>📄 Documentos</h3>", unsafe_allow_html=True)
             df_d = load("Documentos", 600)
             if is_admin:
                 df_u_docs = load("Usuarios", 600)
@@ -656,7 +626,7 @@ try:
                 if not dv.empty and 'Categoria' in dv.columns:
                     cats_d = dv['Categoria'].unique().tolist()
                     if cats_d:
-                        sc = st.selectbox("📂 Filtrar Categoría:", ["Todas"] + cats_d)
+                        sc = st.selectbox("📂 Categoría:", ["Todas"] + cats_d)
                         if sc != "Todas": dv = dv[dv['Categoria'] == sc]
             else:
                 dv = df_d[df_d['NIF_NIE'].astype(str).str.strip() == str(u['NIF_NIE']).strip()]
@@ -673,7 +643,7 @@ try:
 
         # VISTA: CHAT
         elif vista == "Chat":
-            st.markdown("<h3 style='color:#D4AF37;'>💬 Chat Directo</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color:#E63946; font-weight:800;'>💬 Soporte</h3>", unsafe_allow_html=True)
             df_chat = load("Chat_Directo", 5)
             df_u_chat = load("Usuarios", 300)
             tm = u['Email']
@@ -692,11 +662,10 @@ try:
                 conn.update(worksheet="Chat_Directo", data=pd.concat([df_chat, nm], ignore_index=True))
                 enviar_aviso_email(tm, "Nuevo Mensaje Chat", f"Respuesta de Admin: {p}"); st.rerun()
 
-        # VISTA: MENÚ (CONFIGURACIÓN Y EXTRAS)
+        # VISTA: MENÚ (CONFIGURACIÓN)
         elif vista == "Menú":
-            st.markdown("<h3 style='color:#D4AF37;'>⚙️ Menú y Configuración</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='color:#E63946; font-weight:800;'>⚙️ Menú</h3>", unsafe_allow_html=True)
             
-            # Selector de Rol en la configuración
             roles_disponibles = [r.strip() for r in str(u.get('Roles', '')).split(',') if r.strip()]
             if len(roles_disponibles) > 1:
                 nuevo_rol = st.selectbox("👤 Tu Rol Activo:", roles_disponibles, index=roles_disponibles.index(st.session_state.rol_activo))
@@ -704,9 +673,8 @@ try:
                     st.session_state.rol_activo = nuevo_rol
                     st.rerun()
 
-            tabs_menu = st.tabs(["🏆 Quiz", "📚 Manuales", "❓ FAQs", "ℹ️ Guía"])
+            tabs_menu = st.tabs(["🏆 Quiz", "📚 Libros", "❓ FAQs", "ℹ️ Info"])
             
-            # QUIZ
             with tabs_menu[0]:
                 st.subheader(f"Quiz Mensual: {MES_ACTUAL_QUIZ}")
                 try: df_ranking = load("Ranking_Quiz", 0)
@@ -752,7 +720,6 @@ try:
                                 conn.update(worksheet="Ranking_Quiz", data=pd.concat([df_ranking, nuevo_registro], ignore_index=True))
                                 st.success("¡Enviado!"); time.sleep(1); st.rerun()
             
-            # MANUALES
             with tabs_menu[1]:
                 df_m = load("Manuales", 600)
                 cats = df_m['Categoria'].unique()
@@ -762,7 +729,6 @@ try:
                             st.write(f"**{r['Nombre_Manual']}**")
                             if st.button("Ver", key=f"m_{r['Nombre_Manual']}", type="secondary"): st.components.v1.iframe(f"https://drive.google.com/file/d/{extraer_id_drive(r['Enlace Drive'])}/preview", height=500)
             
-            # FAQS
             with tabs_menu[2]:
                 df_f = load("FAQ", 600)
                 cats = df_f['Categoria'].unique()
@@ -771,42 +737,32 @@ try:
                         for _, r in df_f[df_f['Categoria'] == c].iterrows():
                             with st.expander(r['Pregunta']): st.write(r['Respuesta'])
                             
-            # GUIA
             with tabs_menu[3]:
                 st.write("Esta herramienta es tu centro de mando.")
-                with st.expander("📱 Tablón y 📄 Docs"): st.write("Noticias generales y acceso a tus nóminas de forma privada.")
-                with st.expander("✅ Tareas (Evidencia Visual)"): st.write("🟢 Verde: En plazo | 🟠 Naranja: Hoy | 🔴 Rojo: Caducada. \n\n📸 **Foto Obligatoria:** Si la tarea tiene el aviso amarillo, debes subir foto al chat para cerrarla.")
-                with st.expander("🏆 Quiz y 💬 Chat"): st.write("El Quiz cambia cada mes y genera un ranking público. Usa el Chat para hablar con administración.")
+                with st.expander("📱 Tablón y 📄 Docs"): st.write("Noticias generales y acceso a tus nóminas.")
+                with st.expander("✅ Tareas (Evidencia)"): st.write("🟢 Verde: En plazo | 🟠 Naranja: Hoy | 🔴 Rojo: Caducada. \n📸 **Foto Obligatoria:** Si la tarea tiene el aviso, sube foto al chat.")
 
             st.write("")
             if st.button("🚪 Cerrar Sesión", type="secondary", use_container_width=True): 
                 st.session_state.clear()
                 st.rerun()
 
-        # ---------------------------------------------------------
-        # BOTTOM NAV BAR (ESTILO APP NATIVA)
-        # ---------------------------------------------------------
+        # --- BARRA INFERIOR DE NAVEGACIÓN FIJA (BOTTOM NAV) ---
         def cambiar_vista(nueva_vista):
             st.session_state.app_section = nueva_vista
 
         nav_container = st.container()
         with nav_container:
-            # Marcador HTML para que el CSS engache este contenedor y lo fije abajo
             st.markdown('<div id="bottom-nav-marker"></div>', unsafe_allow_html=True)
-            
             c1, c2, c3, c4, c5 = st.columns(5)
             
-            with c1:
-                st.button("📱\nInicio", key="nav_inicio", on_click=cambiar_vista, args=("Inicio",), use_container_width=True)
-            with c2:
-                st.button("✅\nTareas", key="nav_tareas", on_click=cambiar_vista, args=("Tareas",), use_container_width=True)
-            with c3:
-                st.button("📄\nDocs", key="nav_docs", on_click=cambiar_vista, args=("Docs",), use_container_width=True)
+            with c1: st.button("📱\nInicio", key="nav_inicio", on_click=cambiar_vista, args=("Inicio",), use_container_width=True)
+            with c2: st.button("✅\nTareas", key="nav_tareas", on_click=cambiar_vista, args=("Tareas",), use_container_width=True)
+            with c3: st.button("📄\nDocs", key="nav_docs", on_click=cambiar_vista, args=("Docs",), use_container_width=True)
             with c4:
                 icono_chat = "🔴\nChat" if hay_mensaje else "💬\nChat"
                 st.button(icono_chat, key="nav_chat", on_click=cambiar_vista, args=("Chat",), use_container_width=True)
-            with c5:
-                st.button("⚙️\nMenú", key="nav_menu", on_click=cambiar_vista, args=("Menú",), use_container_width=True)
+            with c5: st.button("⚙️\nMenú", key="nav_menu", on_click=cambiar_vista, args=("Menú",), use_container_width=True)
 
 except Exception as e:
     reportar_error_a_mario(e)
